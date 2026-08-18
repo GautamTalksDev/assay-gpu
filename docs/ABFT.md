@@ -198,16 +198,18 @@ Command (no default for repeats):
 ```bash
 uv run assay abft overhead --repeats N --m M --k K --n N --backend pytorch --device cpu
 # CUDA, when a GPU exists:
-uv run assay abft overhead --repeats N --m M --k K --n N --backend pytorch --device cuda
+uv run assay abft overhead --repeats N --m M --k K --n N --dtype bfloat16 --backend pytorch --device cuda
 uv run assay abft overhead --repeats N --m M --k K --n N --backend triton --device cuda
 ```
 
-This times `A @ B` against the checksum trio only. It is **not** Kill
-Test 2 (end-to-end transformer inference). Do not copy a CPU ratio onto
-a GPU.
+This times `A @ B` against the ones-sided checksum and against
+residual-v2 `eᵀ |A| |B| e`. It is **not** Kill Test 2 (end-to-end
+transformer inference). Do not copy a CPU ratio onto a GPU.
 
-Measured 2026-08-18 on the development workstation (WSL2, no NVIDIA
-GPU, PyTorch 2.13.0+cu130 CPU execution of the CUDA wheel):
+### CPU (development workstation)
+
+Measured 2026-08-18 on WSL2, no NVIDIA GPU, PyTorch 2.13.0+cu130 CPU
+execution of the CUDA wheel, float32 ones GEMM:
 
 | shape (M,K,N) | device | backend | repeats | gemm_s | checksum_s | checksum/gemm |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -216,12 +218,32 @@ GPU, PyTorch 2.13.0+cu130 CPU execution of the CUDA wheel):
 | 512, 512, 512 | cpu | pytorch | 30 | 0.00085154 | 0.00004946 | 0.05808443 |
 
 Read the 512 column as: on this CPU, the checksum path was about 5.8% of
-the GEMM time for a 512-cubed ones GEMM in float32. Small shapes are
-dominated by call overhead (checksum/gemm > 1). That is a measurement,
-not a spec.
+the GEMM time. Small shapes are dominated by call overhead. That is a
+measurement, not a spec.
 
-GPU checksum/gemm and the Triton path: **UNMEASURED**. Run the CUDA
-commands on Kaggle / Colab / HPC and append rows. Do not invent them.
+### Tesla T4 (residual-v2, bfloat16, PyTorch)
+
+Measured on a Tesla T4, residual-v2, bfloat16, PyTorch backend,
+repeats = 8. Ratios are wall time over the GEMM. Combined is checksum
+plus normalizer, each timed separately against the same GEMM.
+
+| shape | checksum / GEMM | normalizer / GEMM | combined / GEMM |
+| --- | --- | --- | --- |
+| 512³ | 57.0% | 93.9% | 151% |
+| 1024³ | 9.5% | 24.6% | 34.1% |
+| 2048³ | 2.2% | 9.6% | 11.8% |
+| 4096³ | 1.0% | 6.8% | 7.8% |
+
+The combined figure is below 10% of GEMM only at 4096³ (7.8%) and would
+be smaller at larger N. At 2048³ it is 11.8%. The normalizer costs about
+3–7× the checksum at 1024³ and above and dominates the total. Overhead
+falls roughly as 1/N: both checks are `O(M K + K N)` memory passes
+against an `O(M K N)` GEMM.
+
+That 10% comparison is this GEMM-only ratio on this GPU and dtype. It
+is not Kill Test 2. KT-2 is e2e transformer inference. Its bar is
+unchanged. residual-v2 has no noisefloor data yet. Triton: still
+**UNMEASURED**.
 
 ## What this checkpoint does not do
 

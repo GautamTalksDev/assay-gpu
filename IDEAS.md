@@ -38,6 +38,10 @@ bugs only. If an idea looks like a product, it stays here.
 17. A web UI for browsing attestation-v1 JSON.
 18. Re-tuning KT-1 thresholds because the detection matrix is empty.
     The detector is not retuned.
+19. Cache `eᵀ |A| |B| e` across GEMMs. residual-v2's scale depends
+    only on A and B. At inference, weights are fixed across calls, so
+    the `|B|` factor could be cached per weight matrix and amortized.
+    Untested. Do not build this to paper over T4 overhead at 2048³.
 
 When one of these becomes necessary, copy it into a checkpoint and
 delete it from this list. Until then, leave it.

@@ -319,29 +319,14 @@ Implemented:
 PREDICTIONS section above was written before any residual-v2 noisefloor
 existed.
 
-## Measured cost of `eᵀ |A| |B| e` (not a T4 figure)
+## Measured cost of `eᵀ |A| |B| e`
 
-Device: this workstation, CPU, no NVIDIA GPU. Ones matrices.
-`absolute_factor_scale` is `abs` + axis sums in float64 + a dot.
-That is the `|A|` memory traffic, not two extra GEMVs.
-
-float32:
-
-| shape | repeats | gemm_s | checksum_s | scale_s | scale/gemm | (checksum+scale)/gemm |
-| --- | --- | --- | --- | --- | --- | --- |
-| 512³ | 15 | 0.000723 | 0.000056 | 0.000421 | 0.582 | 0.660 |
-| 2048³ | 5 | 0.045046 | 0.001156 | 0.015236 | 0.338 | 0.364 |
-| 4096³ | 3 | 0.366891 | 0.004073 | 0.060826 | 0.166 | 0.177 |
-
-bfloat16 on this CPU is a slow software GEMM, so the ratio collapses
-(512³ scale/gemm 0.0045; 2048³ 0.0009). That is not the T4 ratio.
-On a T4 the GEMM uses Tensor Cores and the abs-sum stays a memory
-pass over A and B. The CPU float32 column is the lower bound on how
-visible that traffic is when GEMM is not artificially slow: already
-17–58% of GEMM at these sizes. `assay watch` adding this to every
-checked GEMM can exceed KT-2's 10% before the rest of the checksum.
-T4 wall-clock is unmeasured. Residual-v2 remains the characterization
-statistic either way.
+CPU float32 ones-GEMM numbers for this workstation are in
+`docs/ABFT.md` (development box, no NVIDIA GPU). Tesla T4 bfloat16
+residual-v2 ratios, repeats = 8, are in the same file. Combined
+checksum + normalizer is below 10% of GEMM only at 4096³ on that T4
+(7.8%). That is not a KT-2 verdict. Residual-v2 remains the
+characterization statistic either way.
 
 ## Pilot diagnostics (already in tree)
 
