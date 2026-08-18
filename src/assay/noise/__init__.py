@@ -1,0 +1,1 @@
+"""Empirical noise floor characterization."""

@@ -1,0 +1,38 @@
+---
+description: Hardware verification invariants — deterministic, measured, no silent false positives
+alwaysApply: true
+---
+
+# Hardware verification invariants
+
+A false positive tells a company its expensive hardware is broken. Prefer a missed detection over a fabricated failure. All logic must be deterministic and unit-testable.
+
+## Forbidden unless the user explicitly requests it
+
+- LLM / model API calls
+- Heuristic scores or "confidence" numbers without a measured derivation
+- Machine-learning models (training, inference, or pretrained weights used as a judge)
+- Network requests
+
+## Thresholds
+
+Every numerical threshold must be traceable to measured data already in the repository (dataset, fixture, recorded trace, or documented measurement). Never hardcode a guessed cutoff, magic number, or "typical" industry value.
+
+When a threshold is needed:
+
+1. Point to the file and statistic it came from (e.g. max observed noise floor in `data/...`).
+2. Encode that provenance in a named constant, comment, or test that re-derives it from the data.
+3. If the data is not in the repo, stop and ask — do not invent a number.
+
+## Dependencies
+
+- Never add a dependency that is not already in `pyproject.toml` without asking first.
+- Prefer the Python standard library and `torch`.
+- Avoid new dependencies aggressively, including transitive "helpers".
+
+## Implementation bar
+
+- Pure functions over hidden global state.
+- Same inputs → same outputs (no wall-clock, RNG, or network in the decision path).
+- Every decision path covered by unit tests with fixtures from real or recorded measurements.
+- Do not paper over uncertainty with scores; emit explicit measured quantities and pass/fail against documented thresholds.
