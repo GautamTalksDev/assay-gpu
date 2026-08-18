@@ -8,7 +8,7 @@ version = "0.0.0"
 description = "Deterministic GPU correctness assay."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 authors = [{ name = "assay-gpu contributors" }]
 dependencies = [
     "typer",
@@ -21,7 +21,11 @@ assay = "assay.cli:app"
 Homepage = "https://github.com/assay-gpu/assay-gpu"
 
 [dependency-groups]
+test = [
+    "pytest",
+]
 dev = [
+    { include-group = "test" },
     "mypy",
     "ruff",
 ]
@@ -30,7 +34,7 @@ dev = [
 packages = ["src/assay"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py311"
 line-length = 88
 src = ["src", "tests"]
 
@@ -60,8 +64,17 @@ ignore = []
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PLR2004"]
 
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config"]
+markers = [
+    "cpu: tests that run on CPU in CI",
+    "gpu: tests that require a GPU; skipped in CI, run manually",
+]
+
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 strict = true
 warn_unreachable = true
 warn_return_any = true

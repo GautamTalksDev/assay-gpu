@@ -5,7 +5,7 @@ If a kill test has already failed, do not add features; stop.
 
 ## Requirements
 
-- Python 3.12+
+- Python 3.11+
 - `uv`
 - Deterministic, unit-testable changes only
 - No new dependency that is not already in `pyproject.toml` without prior
@@ -79,6 +79,7 @@ Configure `user.name` and `user.email` so the sign-off matches your identity.
 
 1. Fork and branch from the default branch.
 2. Keep changes small and testable.
-3. Run `uv sync`, `uv run ruff check .`, and `uv run mypy src/`.
+3. Run `uv sync`, `uv run ruff check .`, `uv run mypy --strict src/`, and
+   `uv run pytest -m cpu`. Do not expect GPU-marked tests to run in CI.
 4. Commit with `git commit -s`.
 5. Open a pull request that explains *why*, not only *what*.

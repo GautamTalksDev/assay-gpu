@@ -30,6 +30,19 @@ repository.
 
 This repository is a skeleton. Application logic is not present yet.
 
+## GPU access
+
+Spend $0. See `docs/DEV_ENVIRONMENT.md` for Kaggle (primary), Colab,
+Lightning AI, university HPC, and the Docker path that Kaggle/Colab cannot
+validate. Signup credits are survey budget; log them in `docs/BUDGET.md`.
+
+## Tests
+
+```bash
+uv run pytest -m cpu    # CI
+uv run pytest -m gpu    # real GPU, not CI
+```
+
 ## Layout
 
 ```
@@ -48,7 +61,7 @@ docs/
 
 ## Requirements
 
-- Python 3.12+
+- Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
 
 ## Setup
