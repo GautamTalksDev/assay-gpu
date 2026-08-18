@@ -3,8 +3,9 @@
 ## Supported versions
 
 This project is a pre-logic skeleton. Treat the current tree as unsupported
-for production use until application code exists and kill tests KT-1 and KT-2
-have been evaluated against measured data.
+for production use. Kill tests KT-1 and KT-2 have been evaluated and both
+are FAIL (`docs/RESULTS-KT1.md`, `docs/RESULTS-KT2.md`). `assay watch` is
+not a shipped product.
 
 ## Reporting a vulnerability
 
@@ -24,3 +25,8 @@ confirm the report is not a vulnerability.
 Hardware-failure claims against real devices must be backed by recorded
 measurements in `data/` and a reproducible command line. Unreproducible
 reports will be closed.
+
+Survey publications name **no provider** for an individual FAIL or
+INCONCLUSIVE. Three reproductions would be required to name a provider;
+this budget will not produce three. Aggregate statistics only
+(`docs/SURVEY.md`, `docs/SURVEY-2026.md`, `scripts/survey/collect.py`).

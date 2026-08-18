@@ -22,7 +22,7 @@ CI on GitHub Actions runs exactly those steps on `ubuntu-latest` with Python
 | Marker | Where it runs | What it covers |
 | --- | --- | --- |
 | `cpu` | GitHub Actions, any laptop | Imports, CLI skeleton, anything that must not need CUDA |
-| `gpu` | Manual: Kaggle, Colab, Lightning, HPC, or `scripts/gpu_smoke.sh` | `nvidia-smi` sees a device; later, real workloads |
+| `gpu` | Manual: Kaggle, Colab, Lightning, HPC, or `scripts/gpu_smoke.sh` | `nvidia-smi`; W01-W07 shapes; double-run record |
 
 Every test must carry exactly one of those markers (`tests/conftest.py`
 rejects unmarked tests).
@@ -178,3 +178,5 @@ distribution path is unproven. Do not start CP-2 on that basis.
 - RunPod/Vast (or similar) signup credits **are** survey budget. Log them
   in `docs/BUDGET.md` the day they are claimed, including remaining credit.
 - HARD CEILING remains $75 cash-or-credit across all providers.
+- Before any rental: `./scripts/survey/preflight.sh`. If it exits 1,
+  the survey is over (`docs/SURVEY.md`). Do not launch.

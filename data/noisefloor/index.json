@@ -1,0 +1,6 @@
+{
+  "spec_id": "noisefloor-v1",
+  "measured_gpu_models": [],
+  "runs": [],
+  "note": "No GPU characterization files in this tree. Every lookup is INCONCLUSIVE until run-*.json from a named GPU exists with n >= ceil(1/(1-p)) samples."
+}

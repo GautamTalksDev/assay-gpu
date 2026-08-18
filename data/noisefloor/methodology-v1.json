@@ -1,0 +1,7 @@
+{
+  "spec_id": "noisefloor-v1",
+  "target_quantile": "99999/100000",
+  "target_quantile_note": "Order-statistic percentile for the tolerance. The residual magnitude is not in this file; it is computed from run-*.json measurements.",
+  "abft_note": "GEMM: normalized |sum(C) - sum_k(sum(A[:,k])*sum(B[k,:]))| with C promoted to float64. Denominator is max(|checksum|, |sum(C)|). Zero is IEEE +0, not a cutoff.",
+  "never_extrapolate": true
+}

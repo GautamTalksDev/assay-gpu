@@ -1,0 +1,59 @@
+Rented GPU Correctness Survey — lab notebook
+Plain text. Date, provider, instance, observations, surprises,
+operational annoyances. Annoyances become the blog post later.
+Do not launch. Do not post. Do not tweet.
+
+================================================================
+2026-08-18
+provider: none
+instance: none (operator workstation, WSL2)
+GPU: none — nvidia-smi not present
+spend: $0.00 (docs/BUDGET.md). preflight against HARD_CEILING=75
+      is OK with remaining $75.00.
+what happened:
+  Built scripts/survey/preflight.sh, scripts/survey/collect.py,
+  docs/SURVEY.md, data/survey/ (empty archive). Did not open a
+  cloud account. Did not pull a GPU container. Did not run
+  assay run --thorough on rented hardware.
+observations:
+  Definition of Done (30 instances / 12 providers / 4 GPU models)
+  is unmet. Publishing now would be a blog post without a survey.
+surprises:
+  none from silicon; there was no silicon.
+operational annoyances:
+  - Docker CLI present; daemon not running
+    (dockerDesktopLinuxEngine missing).
+  - gh not authenticated; no git remote.
+  - No NVIDIA driver in the WSL2 guest, so this box cannot be a
+    survey instance.
+  - Signup credits were not claimed. They remain unused on
+    purpose: converting them is week-8-plus work, not a same-day
+    launch.
+reproduction attempts: none (zero assays, zero anomalies).
+consoles: no provider accounts, therefore zero active resources
+  to leave running. Still the rule: destroy immediately after
+  assay, set a phone timer.
+next: run preflight before the first rental. Log BUDGET.md before
+  the second. Cheapest root-access SKU. One provider at a time.
+================================================================
+2026-08-18 (later the same day)
+provider: none
+instance: none
+GPU: none
+spend: $0.00
+what happened:
+  Wrote docs/SURVEY-2026.md (naming policy, then method, then
+  limitations, then empty findings). Released data/survey/ under
+  CC-BY-4.0 (LICENSE, README.md, header-only summary.csv). Did not
+  rent. Did not tweet. Did not post.
+observations:
+  The n=30 zero-anomaly sentence is still counterfactual. Publishing
+  the contract without field data is the honest artifact; quoting
+  it as a market study would not be.
+surprises: none
+operational annoyances:
+  Same workstation constraints as the previous entry. No consoles
+  to check for leftover instances because no accounts exist.
+reproduction attempts: none
+================================================================
+

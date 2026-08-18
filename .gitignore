@@ -38,5 +38,10 @@ uv.lock.bak
 .env.*
 !.env.example
 credentials.json
-*.pem
+data/noisefloor/cache/
+
+# Signing keys — never commit
+operator.json
 *.key
+*.pem
+*-key.json

@@ -1,0 +1,745 @@
+{
+  "artifacts": [
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "gemm_m32_k32_n32.npz",
+      "key": "a",
+      "name": "gemm_m32_k32_n32_a",
+      "note": "fp64 GEMM left factor",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 21260821,
+      "sha256": "26e604eaec4aafc56a78f6772c9570c2687dfd75cb8af008bc68d0b8e6758031",
+      "shape": [
+        32,
+        32
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "gemm_m32_k32_n32.npz",
+      "key": "b",
+      "name": "gemm_m32_k32_n32_b",
+      "note": "fp64 GEMM right factor",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 21260822,
+      "sha256": "79d64b124607b6fe98b44abf6a41650e42561ac2fc692520607a1e44b78a84b1",
+      "shape": [
+        32,
+        32
+      ]
+    },
+    {
+      "distribution": "fp64_kloop_matmul",
+      "dtype": "float64",
+      "file": "gemm_m32_k32_n32.npz",
+      "key": "c",
+      "name": "gemm_m32_k32_n32_c",
+      "note": "defined-order K-loop multiply-then-add; not BLAS",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 21260821,
+      "sha256": "3d6f8e64b2c16436e05218b2faf3817ac5f10fad4c85aef704943868e32403b3",
+      "shape": [
+        32,
+        32
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "gemm_m64_k48_n32.npz",
+      "key": "a",
+      "name": "gemm_m64_k48_n32_a",
+      "note": "fp64 GEMM left factor",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 21260823,
+      "sha256": "e6a74e9d012987792900002c37b24a209e862ceea87ae16cb317cf54869acdfa",
+      "shape": [
+        64,
+        48
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "gemm_m64_k48_n32.npz",
+      "key": "b",
+      "name": "gemm_m64_k48_n32_b",
+      "note": "fp64 GEMM right factor",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 21260824,
+      "sha256": "a3e139ccb53fe43414f3ad249b5c594ac8198a82acad9a11a89efe205862a30f",
+      "shape": [
+        48,
+        32
+      ]
+    },
+    {
+      "distribution": "fp64_kloop_matmul",
+      "dtype": "float64",
+      "file": "gemm_m64_k48_n32.npz",
+      "key": "c",
+      "name": "gemm_m64_k48_n32_c",
+      "note": "defined-order K-loop multiply-then-add; not BLAS",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 21260823,
+      "sha256": "f84f9e71d0117599a12da01c99044bcb8d7bcacc5342086beb3e992e4890e7b6",
+      "shape": [
+        64,
+        32
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "gemm_m128_k64_n96.npz",
+      "key": "a",
+      "name": "gemm_m128_k64_n96_a",
+      "note": "fp64 GEMM left factor",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 21260825,
+      "sha256": "983d100545f5f6bca518bb5e412aab9087f738a9d512403e02ddedf00fc89abe",
+      "shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "gemm_m128_k64_n96.npz",
+      "key": "b",
+      "name": "gemm_m128_k64_n96_b",
+      "note": "fp64 GEMM right factor",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 21260826,
+      "sha256": "837e841efde9d062f45511c507876e96ae6555f3e7cddc2f8243d0e217660514",
+      "shape": [
+        64,
+        96
+      ]
+    },
+    {
+      "distribution": "fp64_kloop_matmul",
+      "dtype": "float64",
+      "file": "gemm_m128_k64_n96.npz",
+      "key": "c",
+      "name": "gemm_m128_k64_n96_c",
+      "note": "defined-order K-loop multiply-then-add; not BLAS",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 21260825,
+      "sha256": "ee70614669aa24f95d3d6002aa41cc2d62205f2036c6fd88afb1c190173f1591",
+      "shape": [
+        128,
+        96
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "sdpa_b1_h4_s16_d8.npz",
+      "key": "q",
+      "name": "sdpa_b1_h4_s16_d8_q",
+      "note": "fp64 SDPA operand",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 24260830,
+      "sha256": "3afccf463580579a0388e379c30a0e17e5a7b106d3eec5a2ed83aef5c46241d5",
+      "shape": [
+        1,
+        4,
+        16,
+        8
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "sdpa_b1_h4_s16_d8.npz",
+      "key": "k",
+      "name": "sdpa_b1_h4_s16_d8_k",
+      "note": "fp64 SDPA operand",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 24260831,
+      "sha256": "d2e1e0149bed862a9ebbd71a3c160426eaca17f4c9d688464f87ac6731c0dcfa",
+      "shape": [
+        1,
+        4,
+        16,
+        8
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "sdpa_b1_h4_s16_d8.npz",
+      "key": "v",
+      "name": "sdpa_b1_h4_s16_d8_v",
+      "note": "fp64 SDPA operand",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 24260832,
+      "sha256": "8dc5b510c68614768758c5edb0bd415aa173d97b5403aa7f6280a22fd95de5f3",
+      "shape": [
+        1,
+        4,
+        16,
+        8
+      ]
+    },
+    {
+      "distribution": "fp64_sdpa",
+      "dtype": "float64",
+      "file": "sdpa_b1_h4_s16_d8.npz",
+      "key": "out",
+      "name": "sdpa_b1_h4_s16_d8_out",
+      "note": "scale=1/sqrt(head_dim); defined-order matmul and softmax",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 24260830,
+      "sha256": "e9ef75d853dde0e0197d975f5636189cb4d5d585edb9bfc8e1eb56fe53d2d5ab",
+      "shape": [
+        1,
+        4,
+        16,
+        8
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "sdpa_b2_h8_s32_d16.npz",
+      "key": "q",
+      "name": "sdpa_b2_h8_s32_d16_q",
+      "note": "fp64 SDPA operand",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 24260833,
+      "sha256": "3e613a10153f2ade7121da79d4e7ae526dee0d8bce272d53a1b123c321fe1062",
+      "shape": [
+        2,
+        8,
+        32,
+        16
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "sdpa_b2_h8_s32_d16.npz",
+      "key": "k",
+      "name": "sdpa_b2_h8_s32_d16_k",
+      "note": "fp64 SDPA operand",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 24260834,
+      "sha256": "8ff31847aaf0771dafd9e1b159a70abf181f845c679c6732a6577120eb224ef1",
+      "shape": [
+        2,
+        8,
+        32,
+        16
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "sdpa_b2_h8_s32_d16.npz",
+      "key": "v",
+      "name": "sdpa_b2_h8_s32_d16_v",
+      "note": "fp64 SDPA operand",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 24260835,
+      "sha256": "a6bdc913326ba3b37b031b8228f2a4c37b0ade39e09407c5f798b5d71ffebb5c",
+      "shape": [
+        2,
+        8,
+        32,
+        16
+      ]
+    },
+    {
+      "distribution": "fp64_sdpa",
+      "dtype": "float64",
+      "file": "sdpa_b2_h8_s32_d16.npz",
+      "key": "out",
+      "name": "sdpa_b2_h8_s32_d16_out",
+      "note": "scale=1/sqrt(head_dim); defined-order matmul and softmax",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 24260833,
+      "sha256": "20fe2c40af574ecec70b3b2bf704cca60cc8c717c3db084fde87c4131ba951d7",
+      "shape": [
+        2,
+        8,
+        32,
+        16
+      ]
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "reduce_8192.npz",
+      "key": "x",
+      "name": "reduce_in",
+      "note": "fp64 reduction input, C-order",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 25260833,
+      "sha256": "d45a88c5251246fbc70de217a028920251204643cc26107abdb7e1f10d211810",
+      "shape": [
+        8192
+      ]
+    },
+    {
+      "distribution": "fp64_c_order_sum",
+      "dtype": "float64",
+      "file": "reduce_8192.npz",
+      "key": "sum",
+      "name": "reduce_sum",
+      "note": "left-to-right sum of C-order ravel",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 25260833,
+      "sha256": "6e1c41d744512255f9bb09da9ebd9ebf9800a93c025c76c0678523d39160f8a9",
+      "shape": []
+    },
+    {
+      "distribution": "fp64_c_order_mean",
+      "dtype": "float64",
+      "file": "reduce_8192.npz",
+      "key": "mean",
+      "name": "reduce_mean",
+      "note": "c-order sum divided by length",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 25260833,
+      "sha256": "02c64026454075ef5474d3ec385a9d1140bcd94a7d607b063f04cd0d8e4486eb",
+      "shape": []
+    },
+    {
+      "distribution": "uniform_-1_1",
+      "dtype": "float64",
+      "file": "elementwise.npz",
+      "key": "x_unit",
+      "name": "elementwise_unit",
+      "note": "domain for exp and tanh",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 26260836,
+      "sha256": "660c73bdf759a71a88d3d598df4a581d71dbd9e57505a31d70e405dc194a37d6",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "uniform_1_4",
+      "dtype": "float64",
+      "file": "elementwise.npz",
+      "key": "x_pos",
+      "name": "elementwise_pos",
+      "note": "domain for rsqrt (strictly positive)",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 26260837,
+      "sha256": "bb53d27f0d18cd71aecf14024818558c3d187df8d0559ff0f7b00a96c963fed9",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "fp64_exp",
+      "dtype": "float64",
+      "file": "elementwise.npz",
+      "key": "exp",
+      "name": "elementwise_exp",
+      "note": "numpy.exp",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 26260836,
+      "sha256": "bd8756966e0d18207a99e9065ef608d3f616796164877aef2616d48e15396b36",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "fp64_tanh",
+      "dtype": "float64",
+      "file": "elementwise.npz",
+      "key": "tanh",
+      "name": "elementwise_tanh",
+      "note": "numpy.tanh",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 26260836,
+      "sha256": "6071dd863e5ccde3046d18186696517154424ce81090db1a1db42ce683aaed70",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "fp64_rsqrt",
+      "dtype": "float64",
+      "file": "elementwise.npz",
+      "key": "rsqrt",
+      "name": "elementwise_rsqrt",
+      "note": "1/sqrt, defined-order",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 26260836,
+      "sha256": "c17d61009d51a8fb560e52ee5b1fdeb121a38f5140ef8f2d7cf0e824314d3135",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "tok_emb",
+      "name": "w07_tok_emb",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "4b3dbb9ec3eb3b142e7fc58fb55fa65885668a2719577c4e02749074b67ff21c",
+      "shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_attn_scale",
+      "name": "w07_layer0_attn_scale",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "47a8d4036b6dd448da8725b35b04a64293e5adc0595ee0af6603d9684ef21cee",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_wq",
+      "name": "w07_layer0_wq",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "e5b57cd9eef403ccebcaf3e7df1abff45f50be2f523af92ddaad1afdc05ec06e",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_wk",
+      "name": "w07_layer0_wk",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "d84b1833992f0b53d2a73fd1e7b302dd49413a135ba366f4e085f0090760597f",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_wv",
+      "name": "w07_layer0_wv",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "39c6107624da8740b3b9cce6bc4c2167fc0859d87543d439e9a7fc2800867847",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_wo",
+      "name": "w07_layer0_wo",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "0d3f6979eb74479e8fc53efcc52710c614d8c084209f138e4e309bffe3df06c8",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_w1",
+      "name": "w07_layer0_w1",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "9a94822f7126d9d54ac8fa4875fefe3464ea10d076f2c254c67fe8e06748262b",
+      "shape": [
+        64,
+        128
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_w2",
+      "name": "w07_layer0_w2",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "7a24b7a02f71e74fc43df62d73b3af78e1b4ea78c391986cb6ec2ce164ca07d9",
+      "shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer0_ffn_scale",
+      "name": "w07_layer0_ffn_scale",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "8a02ed373fc423286a544018526e7d2f9914edab2ccb904a89675555bfc8d253",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_attn_scale",
+      "name": "w07_layer1_attn_scale",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "154dc250d6742769ddf3c3e7414783d3c7f64e8d6e6d0a9a328375f9635e4dd7",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_wq",
+      "name": "w07_layer1_wq",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "e377d1f29a6d030fdf1387033f6f926113a7284e7b0f0f39157f7d2c8ac4919c",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_wk",
+      "name": "w07_layer1_wk",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "c2789b23b962c6548264c1bd419eca19334bf777b57e2e7b340ab796eea75d05",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_wv",
+      "name": "w07_layer1_wv",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "d0338bda07867284c4abb3fd7c44876c06b50faed48243e33442f019e4038ec9",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_wo",
+      "name": "w07_layer1_wo",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "f0eae9874a08ffa225a976e121e336cda7a1fd74b5b911a7d8ed02e2dec4a265",
+      "shape": [
+        64,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_w1",
+      "name": "w07_layer1_w1",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "04b2f6b53ecfe84319a207a087b4207b5eecc6b4a5c6762d12cbc72e261458ea",
+      "shape": [
+        64,
+        128
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_w2",
+      "name": "w07_layer1_w2",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "a706bafab39a887287fc3a22e5ce24d14acfacbc414c584e9e7885006ea44c69",
+      "shape": [
+        128,
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "layer1_ffn_scale",
+      "name": "w07_layer1_ffn_scale",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "780d5f8ba691c8f63b09328622ae9655c5b77beff52eb99e7fefd16700615076",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "final_scale",
+      "name": "w07_final_scale",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "4d34ea3d1b98f56c3bb20e542ae071b07a1ecc1ec97b27b7fe9a07fd391979ca",
+      "shape": [
+        64
+      ]
+    },
+    {
+      "distribution": "w07_seeded_open_weights",
+      "dtype": "float64",
+      "file": "w07_weights.npz",
+      "key": "lm_head",
+      "name": "w07_lm_head",
+      "note": "in-repo decoder weights; no network fetch",
+      "numpy_version": "2.4.6",
+      "role": "weights",
+      "seed": 20267818,
+      "sha256": "7a6af151e4326022794519a86c2a2281eda7a1aafbb9f8dc91ef246ce6a302bb",
+      "shape": [
+        64,
+        128
+      ]
+    },
+    {
+      "distribution": "integers_0_vocab",
+      "dtype": "int64",
+      "file": "w07_tokens.npz",
+      "key": "prompt",
+      "name": "w07_prompt",
+      "note": "fixed greedy-decode prompt",
+      "numpy_version": "2.4.6",
+      "role": "input",
+      "seed": 20267917,
+      "sha256": "2e730d3f370ec6a6b00bfa767c6c924477da058f4e8afb0ab0ccf80e3f241f53",
+      "shape": [
+        8
+      ]
+    },
+    {
+      "distribution": "fp64_greedy_argmax",
+      "dtype": "int64",
+      "file": "w07_tokens.npz",
+      "key": "greedy",
+      "name": "w07_greedy",
+      "note": "argmax decode; fp64 CPU forward",
+      "numpy_version": "2.4.6",
+      "role": "fp64_result",
+      "seed": 20267818,
+      "sha256": "159796d76dda661429267dc6cc3c876b550545a12203c2350aafdb442d057b28",
+      "shape": [
+        16
+      ]
+    }
+  ],
+  "byteorder": "little-endian payloads (<f8 / <i8)",
+  "hash_algorithm": "sha256(dtype.str|shape + NUL + C-contiguous tobytes)",
+  "numpy_version": "2.4.6"
+}
