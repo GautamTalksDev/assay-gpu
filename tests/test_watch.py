@@ -50,6 +50,7 @@ def _fail_result() -> CheckResult:
         lookup_status="characterized",
         dtype_name="float32",
         shape=(4, 4, 4),
+        residual_version="residual-v2",
     )
 
 

@@ -8,9 +8,21 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
+from assay.abft.reduce import (
+    absolute_factor_scale,
+    vector_residual_normalized,
+    vector_residual_parts,
+)
+from assay.noise.floats import decode_f64
 from assay.noise.lookup import lookup_abft_tolerance
-from assay.noise.pilot import summarize_residuals
+from assay.noise.pilot import (
+    pearson_correlation,
+    selected_pilot_blas,
+    study_normalizer_link,
+    summarize_residuals,
+)
 from assay.noise.quantiles import order_statistic
 from assay.reference.arrays import generate_array
 from assay.reference.spec import (
@@ -95,3 +107,67 @@ def test_lookup_ignores_pilot_directory(tmp_path: Path) -> None:
     )
     assert found.n_samples == 0
     assert found.p_quantile_residual_hex is None
+
+
+def test_pilot_records_one_draw_per_sample_index() -> None:
+    assert selected_pilot_blas(("cublas", "cublaslt")) == "cublas"
+    assert selected_pilot_blas(("unavailable",)) == "unavailable"
+    n_samples = 8
+    blas_name = selected_pilot_blas(("cublas", "cublaslt"))
+    jobs = [(index, blas_name) for index in range(n_samples)]
+    assert len(jobs) == n_samples
+    assert [job[0] for job in jobs] == list(range(n_samples))
+    assert {job[1] for job in jobs} == {blas_name}
+
+
+def test_sample_index_seeds_are_unique_across_pilot_n() -> None:
+    seeds = [sample_factor_seed(2, 3, sample_index, 0) for sample_index in range(2000)]
+    assert len(set(seeds)) == 2000
+    assert sample_factor_seed(2, 3, 0, 0) != sample_factor_seed(2, 3, 1, 0)
+    assert sample_factor_seed(2, 3, 0, 1) != sample_factor_seed(2, 3, 1, 1)
+
+
+def test_vector_residual_parts_uses_absolute_factor_scale() -> None:
+    left = torch.tensor([[1.0, -2.0], [3.0, -4.0]], dtype=torch.float64)
+    right = torch.tensor([[5.0, -6.0], [7.0, -8.0]], dtype=torch.float64)
+    product = left @ right
+    c_e = product.sum(dim=1)
+    a_be = left @ right.sum(dim=1)
+    abs_residual, scale, normalized = vector_residual_parts(c_e, a_be, left, right)
+    # |A| col sums [4, 6], |B| row sums [11, 15], dot = 134.
+    assert scale == pytest.approx(134.0)
+    assert abs_residual == pytest.approx(0.0)
+    assert normalized == pytest.approx(0.0)
+    assert absolute_factor_scale(left, right) == pytest.approx(134.0)
+    assert vector_residual_normalized(c_e, a_be, left, right) == normalized
+
+
+def test_grand_sum_cancellation_does_not_inflate_residual_v2() -> None:
+    left = torch.ones((2, 2), dtype=torch.float64)
+    right = torch.ones((2, 2), dtype=torch.float64)
+    c_e = torch.tensor([1.0e-12, -1.0e-12], dtype=torch.float64)
+    a_be = torch.tensor([2.0e-12, -1.0e-12], dtype=torch.float64)
+    abs_residual, scale, normalized = vector_residual_parts(c_e, a_be, left, right)
+    assert abs_residual == pytest.approx(1.0e-12)
+    assert scale == pytest.approx(8.0)
+    assert normalized == pytest.approx(1.0e-12 / 8.0)
+    assert normalized < 1.0e-12
+
+
+def test_pearson_and_normalizer_link_on_inverse_scale() -> None:
+    scales = [0.01, 0.1, 1.0, 10.0, 100.0]
+    abs_residuals = [1.0, 1.0, 1.0, 1.0, 1.0]
+    normalized = [1.0 / scale for scale in scales]
+    assert pearson_correlation(normalized, scales) < 0.0
+    inv = [1.0 / scale for scale in scales]
+    assert pearson_correlation(normalized, inv) == pytest.approx(1.0)
+    link = study_normalizer_link(abs_residuals, scales, normalized)
+    assert link["n"] == 5
+    assert link["n_normalizer_zero"] == 0
+    assert decode_f64(link["pearson_normalized_vs_inv_normalizer"]) == pytest.approx(
+        1.0
+    )
+    assert decode_f64(link["pearson_normalized_vs_normalizer"]) < 0.0
+    high_median = decode_f64(link["median_normalizer_at_or_above_p99_normalized"])
+    overall_median = decode_f64(link["median_normalizer"])
+    assert high_median < overall_median

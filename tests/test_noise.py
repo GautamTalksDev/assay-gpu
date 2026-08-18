@@ -74,6 +74,7 @@ def test_lookup_short_run_stays_uncharacterized(tmp_path: Path) -> None:
         "shape": [4096, 4096, 4096],
         "repeat": 0,
         "blas_library": "cublas",
+        "residual_version": "residual-v2",
         "abft_residual_normalized": encode_f64(0.25),
     }
     payload = {
@@ -94,6 +95,40 @@ def test_lookup_short_run_stays_uncharacterized(tmp_path: Path) -> None:
     assert found.n_samples == 2
     assert found.p_quantile_residual_hex is None
     assert found.sample_max_residual_hex == (0.25).hex()
+
+
+def test_lookup_ignores_residual_v1_samples(tmp_path: Path) -> None:
+    method_src = REPO_NOISE / "methodology-v1.json"
+    dest = tmp_path / "noisefloor"
+    dest.mkdir()
+    dest.joinpath("methodology-v1.json").write_text(
+        method_src.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    sample = {
+        "workload": "W02",
+        "dtype": "bfloat16",
+        "shape": [4096, 4096, 4096],
+        "repeat": 0,
+        "blas_library": "cublas",
+        "residual_version": "residual-v1",
+        "abft_residual_normalized": encode_f64(0.25),
+    }
+    payload = {
+        "gpu_model": "Tesla_T4",
+        "residual_version": "residual-v1",
+        "samples": [sample],
+        "aggregates": [],
+    }
+    (dest / "run-v1.json").write_text(json.dumps(payload) + "\n", encoding="utf-8")
+    found = lookup_abft_tolerance(
+        dest,
+        workload="W02",
+        dtype="bfloat16",
+        shape=(4096, 4096, 4096),
+        gpu_model="Tesla_T4",
+    )
+    assert found.n_samples == 0
+    assert found.p_quantile_residual_hex is None
 
 
 def test_result_sha256_covers_dtypes_and_separates_float32_from_bfloat16() -> None:

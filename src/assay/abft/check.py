@@ -9,10 +9,11 @@ from pathlib import Path
 
 import torch
 
+from assay.abft.gemm import RESIDUAL_VERSION
 from assay.abft.reduce import (
     CheckBackend,
     ones_sided_checksums,
-    vector_residual_normalized,
+    vector_residual_parts,
 )
 from assay.noise.floats import encode_f64
 from assay.noise.lookup import (
@@ -59,6 +60,7 @@ class CheckResult:
     lookup_status: str
     dtype_name: str
     shape: tuple[int, int, int]
+    residual_version: str
 
 
 def _dtype_name(tensor: torch.Tensor) -> str:
@@ -184,7 +186,7 @@ def check_gemm(
     )
     chk_a, chk_b, chk_c = _prepare_for_checksum(left, right, product, config)
     c_e, a_be = ones_sided_checksums(chk_a, chk_b, chk_c, config.backend)
-    residual = vector_residual_normalized(c_e, a_be)
+    _abs_residual, _scale, residual = vector_residual_parts(c_e, a_be, chk_a, chk_b)
     status, reason = decide_from_lookup(residual, lookup)
     residual_enc = encode_f64(residual)
     threshold: float | None = None
@@ -212,4 +214,5 @@ def check_gemm(
         lookup_status=lookup.status.value,
         dtype_name=dtype_name,
         shape=(rows, inner, cols),
+        residual_version=RESIDUAL_VERSION,
     )

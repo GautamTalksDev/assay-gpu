@@ -81,7 +81,8 @@ Recorded for each `(workload, shape, dtype, blas_library, sample_index)`:
 
 | Field | Definition |
 | --- | --- |
-| abft_residual_normalized | ones-sided \|sum(C@e) - sum(A@(B@e))\| / max(\|sum(C@e)\|, \|sum(A@(B@e))\|) after promoting both vectors to fp64. Same residual `check_gemm` uses. |
+| residual_version | `residual-v2`. Lookup ignores `residual-v1` and unversioned samples. |
+| abft_residual_normalized | residual-v2: \|sum(C@e) - sum(A@(B@e))\| / (eᵀ \|A\| \|B\| e). Same residual `check_gemm` uses. See `docs/RESIDUAL.md`. |
 | backend | `pytorch` or `triton` (checksum reduction). Recorded so a floor cannot silently mix backends. |
 | sample_index | Independent `(A, B)` draw index. Not a same-input repeat. |
 | result_sha256 | SHA-256 of the GPU tensor in its native dtype (bitwise identity) |
@@ -117,9 +118,10 @@ and **sample index** (`sample_factor_seed` in
 of sample 0) populate `bitwise_stable` only. They are not quantile
 inputs.
 
-The ABFT residual recorded in `run-*.json` is the same ones-sided
-checksum `check_gemm` uses (`C @ e` vs `A @ (B @ e)`), with
-`backend` recorded on every sample (PyTorch GEMV in this version).
+The ABFT residual recorded in `run-*.json` is residual-v2
+(`docs/RESIDUAL.md`): `|sum(C@e)-sum(A@(B@e))| / (eᵀ |A| |B| e)`,
+with `residual_version` on every sample. Lookup ignores residual-v1.
+`backend` is recorded on every sample (PyTorch GEMV in this version).
 
 ## p99.999 is UNJUSTIFIED
 

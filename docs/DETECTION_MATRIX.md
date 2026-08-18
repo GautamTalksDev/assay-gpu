@@ -20,14 +20,14 @@ Lookup reason on every measured cell: `no noisefloor measurements for this confi
 
 Measured cells: 45.
 Detector FAIL (caught): 0.
-Checksum residual hex changed after the flip: 42.
+Checksum residual hex changed after the flip: 41.
 
 | bit_class | n_cells | checksum_moved | caught |
 | --- | --- | --- | --- |
 | SIGN | 9 | 9 | 0 |
 | EXPONENT_HIGH | 9 | 9 | 0 |
 | EXPONENT_LOW | 9 | 9 | 0 |
-| MANTISSA_HIGH | 9 | 9 | 0 |
+| MANTISSA_HIGH | 9 | 8 | 0 |
 | MANTISSA_LOW | 9 | 6 | 0 |
 
 ## Which classes the detector does not catch, and why
@@ -37,17 +37,19 @@ catch any flip. Two different reasons, do not mix them:
 
 1. Uncharacterized noisefloor. Every cell is INCONCLUSIVE because
    n_samples=0. `check_gemm` is not allowed to FAIL.
-   SIGN, EXPONENT_HIGH, EXPONENT_LOW, and MANTISSA_HIGH all moved
-   the residual (9/9 each), including Inf-class EXPONENT_HIGH.
-   Those would still not FAIL today. After a real floor exists,
-   EXPONENT_HIGH is the class most likely to exceed sample max.
+   Residual-v2 scale does not depend on C. checksum_moved is the
+   numerator. See the summary table for per-class counts.
+   EXPONENT_HIGH includes Inf-class cells. Those still do not FAIL
+   today. After a real floor exists, EXPONENT_HIGH is the class
+   most likely to exceed sample max.
 
 2. Checksum-invisible flips. The residual hex was unchanged in
-   3 of 45 cells. Classes: MANTISSA_LOW.
+   4 of 45 cells. Classes: MANTISSA_HIGH, MANTISSA_LOW.
 
-- W01 float32 MANTISSA_LOW n_flips=1 residual `0x1.e9e38e83975ddp-23`
-- W02 bfloat16 MANTISSA_LOW n_flips=1 residual `0x1.ea7f85601ea80p-9`
-- W02 bfloat16 MANTISSA_LOW n_flips=2 residual `0x1.ea7f85601ea80p-9`
+- W01 float32 MANTISSA_LOW n_flips=1 residual `0x1.0e71be03fa96ap-29`
+- W02 bfloat16 MANTISSA_HIGH n_flips=2 residual `0x1.0e6d15fa5ad9cp-15`
+- W02 bfloat16 MANTISSA_LOW n_flips=1 residual `0x1.0e6d15fa5ad9cp-15`
+- W02 bfloat16 MANTISSA_LOW n_flips=2 residual `0x1.0e6d15fa5ad9cp-15`
 
 A ones-vector checksum sums each row of C. A MANTISSA_LOW flip
 is a few ULPs in one element. Native-dtype `C @ e` can round
@@ -75,51 +77,51 @@ finding.
 
 | workload | dtype | bit_class | n_flips | detector | checksum_moved | caught | residual_clean_hex | residual_flipped_hex | n_samples | spec |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| W01 | float32 | SIGN | 1 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.ab67eee68c18dp-5` | 0 | noisefloor-v1 |
-| W01 | float32 | SIGN | 2 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.b60d2005fcb65p-4` | 0 | noisefloor-v1 |
-| W01 | float32 | SIGN | 4 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.8a2e3fe86aed1p-1` | 0 | noisefloor-v1 |
-| W01 | float32 | EXPONENT_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.62bcfdd51ad86p-4` | 0 | noisefloor-v1 |
-| W01 | float32 | EXPONENT_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `nan` | 0 | noisefloor-v1 |
-| W01 | float32 | EXPONENT_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.0000000000000p+0` | 0 | noisefloor-v1 |
-| W01 | float32 | EXPONENT_LOW | 1 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.426e52ec7a1f7p-4` | 0 | noisefloor-v1 |
-| W01 | float32 | EXPONENT_LOW | 2 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.7e61c1584946dp-6` | 0 | noisefloor-v1 |
-| W01 | float32 | EXPONENT_LOW | 4 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.b30995eb092fbp-3` | 0 | noisefloor-v1 |
-| W01 | float32 | MANTISSA_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.adc0d468989adp-7` | 0 | noisefloor-v1 |
-| W01 | float32 | MANTISSA_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.c1f93472e3229p-14` | 0 | noisefloor-v1 |
-| W01 | float32 | MANTISSA_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.b431897235ef3p-4` | 0 | noisefloor-v1 |
-| W01 | float32 | MANTISSA_LOW | 1 | INCONCLUSIVE | False | False | `0x1.e9e38e83975ddp-23` | `0x1.e9e38e83975ddp-23` | 0 | noisefloor-v1 |
-| W01 | float32 | MANTISSA_LOW | 2 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.90961930c0052p-17` | 0 | noisefloor-v1 |
-| W01 | float32 | MANTISSA_LOW | 4 | INCONCLUSIVE | True | False | `0x1.e9e38e83975ddp-23` | `0x1.adec51d2cd5dbp-17` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | SIGN | 1 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.12974aca93df8p-1` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | SIGN | 2 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.3b1984c558184p-2` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | SIGN | 4 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.8338f0c8eb783p-2` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | EXPONENT_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.0000000000000p+0` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | EXPONENT_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.6292f8ff0f284p-6` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | EXPONENT_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.0000000000000p+0` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | EXPONENT_LOW | 1 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.96dd61deaa18dp-5` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | EXPONENT_LOW | 2 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.3bac38161da32p+0` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | EXPONENT_LOW | 4 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.97e8242c4108cp-4` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | MANTISSA_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.bb12b27b80a83p-5` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | MANTISSA_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.ec572f7066923p-9` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | MANTISSA_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.46847ccb6eb0fp-4` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | MANTISSA_LOW | 1 | INCONCLUSIVE | False | False | `0x1.ea7f85601ea80p-9` | `0x1.ea7f85601ea80p-9` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | MANTISSA_LOW | 2 | INCONCLUSIVE | False | False | `0x1.ea7f85601ea80p-9` | `0x1.ea7f85601ea80p-9` | 0 | noisefloor-v1 |
-| W02 | bfloat16 | MANTISSA_LOW | 4 | INCONCLUSIVE | True | False | `0x1.ea7f85601ea80p-9` | `0x1.13a4d1ac97b03p-6` | 0 | noisefloor-v1 |
-| W03 | float16 | SIGN | 1 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.9dae79b3ca379p-4` | 0 | noisefloor-v1 |
-| W03 | float16 | SIGN | 2 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.ddb8ade40bb12p-1` | 0 | noisefloor-v1 |
-| W03 | float16 | SIGN | 4 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.6ec1211c01e9dp-1` | 0 | noisefloor-v1 |
-| W03 | float16 | EXPONENT_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.46f2df87411a5p-4` | 0 | noisefloor-v1 |
-| W03 | float16 | EXPONENT_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.380e3ce763f8ep-4` | 0 | noisefloor-v1 |
-| W03 | float16 | EXPONENT_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `nan` | 0 | noisefloor-v1 |
-| W03 | float16 | EXPONENT_LOW | 1 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.179093f36d0f0p-3` | 0 | noisefloor-v1 |
-| W03 | float16 | EXPONENT_LOW | 2 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.d7b74c282d7e0p-3` | 0 | noisefloor-v1 |
-| W03 | float16 | EXPONENT_LOW | 4 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.493be50095a82p-1` | 0 | noisefloor-v1 |
-| W03 | float16 | MANTISSA_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.d560abc3d6f8dp-8` | 0 | noisefloor-v1 |
-| W03 | float16 | MANTISSA_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.c45f060161bbep-7` | 0 | noisefloor-v1 |
-| W03 | float16 | MANTISSA_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.a9292ffd72f3fp-7` | 0 | noisefloor-v1 |
-| W03 | float16 | MANTISSA_LOW | 1 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.7cf1b4370eef1p-11` | 0 | noisefloor-v1 |
-| W03 | float16 | MANTISSA_LOW | 2 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.466c02a80bb03p-12` | 0 | noisefloor-v1 |
-| W03 | float16 | MANTISSA_LOW | 4 | INCONCLUSIVE | True | False | `0x1.101a5c2753cf5p-11` | `0x1.466c02a80bb03p-12` | 0 | noisefloor-v1 |
+| W01 | float32 | SIGN | 1 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.d7e69d4d4902ep-12` | 0 | noisefloor-v1 |
+| W01 | float32 | SIGN | 2 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.0ec9692301762p-10` | 0 | noisefloor-v1 |
+| W01 | float32 | SIGN | 4 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.b33773a3e4cb2p-8` | 0 | noisefloor-v1 |
+| W01 | float32 | EXPONENT_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.acce1fce8d32ap-11` | 0 | noisefloor-v1 |
+| W01 | float32 | EXPONENT_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `nan` | 0 | noisefloor-v1 |
+| W01 | float32 | EXPONENT_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.435109c11b2eap+117` | 0 | noisefloor-v1 |
+| W01 | float32 | EXPONENT_LOW | 1 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.63ff580ae43a7p-11` | 0 | noisefloor-v1 |
+| W01 | float32 | EXPONENT_LOW | 2 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.b047404073721p-13` | 0 | noisefloor-v1 |
+| W01 | float32 | EXPONENT_LOW | 4 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.30f04a7d8ee6ep-9` | 0 | noisefloor-v1 |
+| W01 | float32 | MANTISSA_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.e0cc523fe4303p-14` | 0 | noisefloor-v1 |
+| W01 | float32 | MANTISSA_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.f0def8c54f641p-21` | 0 | noisefloor-v1 |
+| W01 | float32 | MANTISSA_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.e19a696d1bb86p-11` | 0 | noisefloor-v1 |
+| W01 | float32 | MANTISSA_LOW | 1 | INCONCLUSIVE | False | False | `0x1.0e71be03fa96ap-29` | `0x1.0e71be03fa96ap-29` | 0 | noisefloor-v1 |
+| W01 | float32 | MANTISSA_LOW | 2 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.ba4a041681d10p-24` | 0 | noisefloor-v1 |
+| W01 | float32 | MANTISSA_LOW | 4 | INCONCLUSIVE | True | False | `0x1.0e71be03fa96ap-29` | `0x1.daafa42efbd5bp-24` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | SIGN | 1 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.2da5ae1225c8bp-8` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | SIGN | 2 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.f401b1f83aa54p-9` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | SIGN | 4 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.5605f79315205p-8` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | EXPONENT_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.122e99d6b88e9p+117` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | EXPONENT_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.8e20993eccdd0p-13` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | EXPONENT_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.37bdc072619e9p+55` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | EXPONENT_LOW | 1 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.bef44b6f8f0b7p-12` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | EXPONENT_LOW | 2 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.73ec874f671dap-5` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | EXPONENT_LOW | 4 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.f1a8bf8e80144p-11` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | MANTISSA_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.0147c87712e0fp-11` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | MANTISSA_HIGH | 2 | INCONCLUSIVE | False | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.0e6d15fa5ad9cp-15` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | MANTISSA_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.66b0b0b4f4f2ap-11` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | MANTISSA_LOW | 1 | INCONCLUSIVE | False | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.0e6d15fa5ad9cp-15` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | MANTISSA_LOW | 2 | INCONCLUSIVE | False | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.0e6d15fa5ad9cp-15` | 0 | noisefloor-v1 |
+| W02 | bfloat16 | MANTISSA_LOW | 4 | INCONCLUSIVE | True | False | `0x1.0e6d15fa5ad9cp-15` | `0x1.33fc3c9603e9cp-13` | 0 | noisefloor-v1 |
+| W03 | float16 | SIGN | 1 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.c8da08d78be93p-11` | 0 | noisefloor-v1 |
+| W03 | float16 | SIGN | 2 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.07c98937646f7p-7` | 0 | noisefloor-v1 |
+| W03 | float16 | SIGN | 4 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.9507061021a17p-8` | 0 | noisefloor-v1 |
+| W03 | float16 | EXPONENT_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.69115a645e871p-11` | 0 | noisefloor-v1 |
+| W03 | float16 | EXPONENT_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.750a7032c4336p-11` | 0 | noisefloor-v1 |
+| W03 | float16 | EXPONENT_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `nan` | 0 | noisefloor-v1 |
+| W03 | float16 | EXPONENT_LOW | 1 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.658bdb8204638p-10` | 0 | noisefloor-v1 |
+| W03 | float16 | EXPONENT_LOW | 2 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.0478a0aac7056p-9` | 0 | noisefloor-v1 |
+| W03 | float16 | EXPONENT_LOW | 4 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.6b976ccadadc5p-8` | 0 | noisefloor-v1 |
+| W03 | float16 | MANTISSA_HIGH | 1 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.032e1446b7097p-14` | 0 | noisefloor-v1 |
+| W03 | float16 | MANTISSA_HIGH | 2 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.f3942e80e2aa4p-14` | 0 | noisefloor-v1 |
+| W03 | float16 | MANTISSA_HIGH | 4 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.d5876b399d363p-14` | 0 | noisefloor-v1 |
+| W03 | float16 | MANTISSA_LOW | 1 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.a4b2ade5cc598p-18` | 0 | noisefloor-v1 |
+| W03 | float16 | MANTISSA_LOW | 2 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.6899275741714p-19` | 0 | noisefloor-v1 |
+| W03 | float16 | MANTISSA_LOW | 4 | INCONCLUSIVE | True | False | `0x1.2c7fa0c8b6891p-18` | `0x1.6899275741714p-19` | 0 | noisefloor-v1 |
 
 ## Reproduce
 

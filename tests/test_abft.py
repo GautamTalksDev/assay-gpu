@@ -21,7 +21,7 @@ from assay.abft.gemm import (
     sum_elements_fp64,
 )
 from assay.abft.overhead import measure_checksum_overhead
-from assay.abft.reduce import CheckBackend, ones_matvec_pytorch
+from assay.abft.reduce import CheckBackend, absolute_factor_scale, ones_matvec_pytorch
 from assay.noise.floats import encode_f64
 from assay.noise.lookup import (
     CharacterizationStatus,
@@ -118,6 +118,7 @@ def _write_run(
             "shape": list(shape),
             "repeat": index,
             "abft_residual_normalized": encode_f64(value),
+            "residual_version": "residual-v2",
         }
         for index, value in enumerate(residuals)
     ]
@@ -200,9 +201,9 @@ def test_check_gemm_characterized_pass_fail_ambiguous(tmp_path: Path) -> None:
     assert found.sample_max_residual_hex is not None
     lo = float.fromhex(found.p_quantile_residual_hex)
     hi = float.fromhex(found.sample_max_residual_hex)
-    total = float(product.sum().item())
+    scale = absolute_factor_scale(left, right)
     band = (lo + hi) / 2
-    delta_band = band * total / (1 - band)
+    delta_band = band * scale
     ambiguous_c = product.clone()
     ambiguous_c[0, 0] = ambiguous_c[0, 0] + delta_band
     mid = check_gemm(left, right, ambiguous_c, config)
@@ -210,7 +211,7 @@ def test_check_gemm_characterized_pass_fail_ambiguous(tmp_path: Path) -> None:
     assert mid.threshold == lo
     assert mid.sample_max == hi
 
-    delta_fail = 2 * hi * total / (1 - hi)
+    delta_fail = (hi * 2.0) * scale
     fail_c = product.clone()
     fail_c[0, 0] = fail_c[0, 0] + delta_fail
     dirty = check_gemm(left, right, fail_c, config)
@@ -236,6 +237,7 @@ def test_check_gemm_carries_threshold_and_spec_on_every_result() -> None:
     assert result.min_samples == method.min_samples
     assert result.threshold is None
     assert result.backend == CheckBackend.PYTORCH.value
+    assert result.residual_version == "residual-v2"
 
 
 def test_ones_matvec_reference_shapes_match_row_sum() -> None:
@@ -280,4 +282,5 @@ def test_measure_checksum_overhead_cpu() -> None:
     assert measured.repeats == 3
     assert measured.gemm_seconds > 0.0
     assert measured.checksum_seconds > 0.0
+    assert measured.normalizer_seconds > 0.0
     assert measured.backend == "pytorch"

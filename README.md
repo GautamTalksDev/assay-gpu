@@ -77,6 +77,7 @@ uv run pytest -m gpu    # real GPU: W01–W07 plus `assay run --quick --json`
 Workloads: `docs/WORKLOADS.md`. Goldens: `data/reference/`.
 Noise floor: `docs/SPEC-NOISEFLOOR.md` (noisefloor-v1).
 GEMM checksum detector: `docs/ABFT.md`.
+Residual definition: `docs/RESIDUAL.md` (residual-v2).
 Fault-injection detection matrix: `docs/DETECTION_MATRIX.md`.
 KT-1 evaluation: `docs/RESULTS-KT1.md`.
 KT-2 evaluation: `docs/RESULTS-KT2.md`.
@@ -127,7 +128,7 @@ data/noisefloor/          measured noise floor data (version controlled)
 data/reference/           fp64 golden arrays + manifest (SHA-256 of arrays)
 data/survey/              CC-BY-4.0 dataset (empty reports; summary.csv)
 docs/                     WORKLOADS.md, SPEC-NOISEFLOOR.md, ABFT.md,
-                          DETECTION_MATRIX.md, RESULTS-KT1.md,
+                          RESIDUAL.md, DETECTION_MATRIX.md, RESULTS-KT1.md,
                           RESULTS-KT2.md, SPEC-ATTESTATION.md,
                           SURVEY.md, SURVEY-2026.md, LAB_NOTEBOOK.txt,
                           BUDGET.md

@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 
 _GEMM_NDIM = 2
+RESIDUAL_VERSION = "residual-v2"
 
 
 def gemm_checksum_fp64(
@@ -38,19 +39,27 @@ def sum_elements_fp64(matrix: npt.NDArray[np.float64]) -> np.float64:
     return np.float64(np.sum(data, dtype=np.float64))
 
 
+def normalize_by_scale(abs_residual: np.float64, scale: np.float64) -> np.float64:
+    """Divide abs residual by a nonnegative scale. IEEE zero, not a cutoff.
+
+    If scale is +0, return 0 when abs residual is 0, else inf.
+    """
+    if scale == np.float64(0.0):
+        if abs_residual == np.float64(0.0):
+            return np.float64(0.0)
+        return np.float64(math.inf)
+    return np.float64(np.divide(abs_residual, scale))
+
+
 def normalized_checksum_residual(
     product_sum: np.float64, checksum: np.float64
 ) -> tuple[np.float64, np.float64]:
-    """Return (abs residual, normalized residual).
+    """Return (abs residual, residual-v1 normalized residual).
 
-    Normalization denominator is max(|checksum|, |product_sum|).
-    If both are +0, normalized residual is 0 when abs residual is 0, else inf.
-    Zero is IEEE-754, not a detection cutoff.
+    residual-v1 denominator is max(|checksum|, |product_sum|). That
+    normalizer is void for detection. Kept so the defective formula stays
+    testable. Detector and noisefloor use residual-v2.
     """
     abs_residual = np.float64(np.abs(np.subtract(product_sum, checksum)))
     scale = np.float64(max(abs(float(checksum)), abs(float(product_sum))))
-    if scale == np.float64(0.0):
-        if abs_residual == np.float64(0.0):
-            return abs_residual, np.float64(0.0)
-        return abs_residual, np.float64(math.inf)
-    return abs_residual, np.float64(np.divide(abs_residual, scale))
+    return abs_residual, normalize_by_scale(abs_residual, scale)

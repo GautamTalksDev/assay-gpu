@@ -66,6 +66,18 @@ def test_pilot_writes_outside_run_json_and_records_backend(tmp_path: Path) -> No
     assert payload["not_a_characterization"] is True
     assert payload["backend"] == "pytorch"
     assert payload["n"] == 2
+    indices = [row["sample_index"] for row in payload["samples"]]
+    assert indices == [0, 1]
+    first = payload["samples"][0]
+    second = payload["samples"][1]
+    assert first["blas_library"] == second["blas_library"]
+    assert "abft_residual_abs" in first
+    assert "abft_normalizer" in first
+    assert "distribution_abs" in payload
+    assert "distribution_normalizer" in payload
+    assert "normalizer_link" in payload
+    assert payload["residual_version"] == "residual-v2"
+    assert first["residual_version"] == "residual-v2"
     found = lookup_abft_tolerance(
         dest,
         workload="W02",

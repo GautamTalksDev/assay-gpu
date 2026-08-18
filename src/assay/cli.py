@@ -510,13 +510,23 @@ def abft_overhead_cmd(  # noqa: PLR0913, PLR0917
     cols: Annotated[int, typer.Option("--n")] = 512,
     backend_name: Annotated[str, typer.Option("--backend")] = "pytorch",
     device_name: Annotated[str, typer.Option("--device")] = "cpu",
+    dtype_name: Annotated[str, typer.Option("--dtype")] = "float32",
 ) -> None:
-    """Measure checksum-only wall time versus GEMM. Not a pass/fail cutoff."""
+    """Measure checksum and residual-v2 scale wall time versus GEMM."""
     try:
         backend = CheckBackend(backend_name)
     except ValueError:
         typer.echo("backend must be pytorch or triton", err=True)
         raise typer.Exit(code=1) from None
+    dtype_map = {
+        "float32": torch.float32,
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+    }
+    dtype = dtype_map.get(dtype_name)
+    if dtype is None:
+        typer.echo("dtype must be float32, float16, or bfloat16", err=True)
+        raise typer.Exit(code=1)
     device = torch.device(device_name)
     if device.type == "cuda" and not torch.cuda.is_available():
         typer.echo("CUDA is required for --device cuda", err=True)
@@ -526,6 +536,7 @@ def abft_overhead_cmd(  # noqa: PLR0913, PLR0917
         repeats=repeats,
         backend=backend,
         device=device,
+        dtype=dtype,
     )
     typer.echo(f"shape={list(measured.shape)}")
     typer.echo(f"device={measured.device}")
@@ -535,3 +546,5 @@ def abft_overhead_cmd(  # noqa: PLR0913, PLR0917
     typer.echo(f"gemm_seconds={measured.gemm_seconds:.8f}")
     typer.echo(f"checksum_seconds={measured.checksum_seconds:.8f}")
     typer.echo(f"checksum_over_gemm={measured.checksum_over_gemm:.8f}")
+    typer.echo(f"normalizer_seconds={measured.normalizer_seconds:.8f}")
+    typer.echo(f"normalizer_over_gemm={measured.normalizer_over_gemm:.8f}")

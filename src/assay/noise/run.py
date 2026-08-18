@@ -14,10 +14,11 @@ from typing import Any
 import numpy as np
 import torch
 
+from assay.abft.gemm import RESIDUAL_VERSION
 from assay.abft.reduce import (
     CheckBackend,
     ones_sided_checksums,
-    vector_residual_normalized,
+    vector_residual_parts,
 )
 from assay.noise.blas import available_blas_libraries, blas_library
 from assay.noise.floats import decode_f64, encode_f64
@@ -148,7 +149,9 @@ def _sample_row(  # noqa: PLR0913
 ) -> dict[str, Any]:
     before = read_telemetry(device_index)
     c_e, a_be = ones_sided_checksums(left_gpu, right_gpu, product, _CHECKSUM_BACKEND)
-    residual = vector_residual_normalized(c_e, a_be)
+    abs_residual, normalizer, residual = vector_residual_parts(
+        c_e, a_be, left_gpu, right_gpu
+    )
     after = read_telemetry(device_index)
     return {
         "workload": target.workload,
@@ -158,9 +161,12 @@ def _sample_row(  # noqa: PLR0913
         "repeat": sample_index,
         "backend": _CHECKSUM_BACKEND.value,
         "checksum_kind": "ones_sided_C_e_vs_A_Be",
+        "residual_version": RESIDUAL_VERSION,
         "gemm": "torch.matmul",
         "blas_library": blas_name,
         "abft_residual_normalized": encode_f64(float(residual)),
+        "abft_residual_abs": encode_f64(float(abs_residual)),
+        "abft_normalizer": encode_f64(float(normalizer)),
         "result_sha256": _result_sha256(product),
         "telemetry_before": telemetry_dict(before),
         "telemetry_after": telemetry_dict(after),
@@ -265,6 +271,7 @@ def characterize_gemm(  # noqa: PLR0913, PLR0915
     finished = datetime.now(UTC)
     payload: dict[str, Any] = {
         "spec_id": methodology.spec_id,
+        "residual_version": RESIDUAL_VERSION,
         "tool_version": tool_version(),
         "torch_version": identity.torch_version,
         "cuda_version": identity.cuda_version,
@@ -348,6 +355,7 @@ def _aggregates(  # noqa: PLR0913, PLR0917
                 "shape": list(shape),
                 "blas_library": blas_name,
                 "backend": _CHECKSUM_BACKEND.value,
+                "residual_version": RESIDUAL_VERSION,
                 "n": n_count,
                 "status": status,
                 "reason": reason,

@@ -143,20 +143,15 @@ a fabricated FAIL; that is why uncharacterized hardware cannot FAIL.
 ## Residual and the ambiguous band
 
 Let `ce = C @ e` and `abe = A @ (B @ e)`. The decision residual is
+**residual-v2** (`docs/RESIDUAL.md`):
 
 ```
-|sum(ce) - sum(abe)| / max(|sum(ce)|, |sum(abe)|)
+|sum(ce) - sum(abe)| / (eᵀ |A| |B| e)
 ```
 
-after promoting both vectors to float64. In exact arithmetic this is the
-same family as the noisefloor-v1 scalar
-
-```
-|sum(C) - sum_k(sum(A[:,k]) * sum(B[k,:]))|
-```
-
-Reduction order can make them differ by floating-point noise. That is one
-reason the detector has an **ambiguous band** rather than a single cut.
+after promoting the checksum vectors to float64 and accumulating the
+absolute-factor scale in float64. residual-v1 divided by the signed grand
+sum and is void. Every `CheckResult` carries `residual_version`.
 
 On a **characterized** `(gpu_model, workload, dtype, shape)`:
 

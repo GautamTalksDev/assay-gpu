@@ -8,6 +8,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+from assay.abft.gemm import RESIDUAL_VERSION
 from assay.noise.floats import decode_f64
 from assay.noise.methodology import load_methodology
 from assay.noise.quantiles import empirical_quantile
@@ -61,6 +62,16 @@ def _sample_match(
     return tuple(sample.get("shape", ())) == shape
 
 
+def _sample_residual_version(sample: dict[str, Any], payload: dict[str, Any]) -> str:
+    sample_version = sample.get("residual_version")
+    if isinstance(sample_version, str) and sample_version:
+        return sample_version
+    payload_version = payload.get("residual_version")
+    if isinstance(payload_version, str) and payload_version:
+        return payload_version
+    return "residual-v1"
+
+
 def lookup_abft_tolerance(
     noisefloor_dir: Path,
     *,
@@ -86,6 +97,8 @@ def lookup_abft_tolerance(
         matched = False
         for sample in payload.get("samples", []):
             if not _sample_match(sample, workload=workload, dtype=dtype, shape=shape):
+                continue
+            if _sample_residual_version(sample, payload) != RESIDUAL_VERSION:
                 continue
             encoded = sample.get("abft_residual_normalized")
             if not isinstance(encoded, dict):

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import torch
 
-from assay.abft.reduce import CheckBackend, ones_sided_checksums
+from assay.abft.reduce import CheckBackend, absolute_factor_scale, ones_sided_checksums
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +19,8 @@ class OverheadMeasurement:
     gemm_seconds: float
     checksum_seconds: float
     checksum_over_gemm: float
+    normalizer_seconds: float
+    normalizer_over_gemm: float
     dtype_name: str
 
 
@@ -55,9 +57,12 @@ def measure_checksum_overhead(
     _sync(device)
     ones_sided_checksums(left, right, product, backend)
     _sync(device)
+    absolute_factor_scale(left, right)
+    _sync(device)
 
     gemm_elapsed = 0.0
     checksum_elapsed = 0.0
+    normalizer_elapsed = 0.0
     for _ in range(repeats):
         _sync(device)
         started = time.perf_counter()
@@ -71,9 +76,17 @@ def measure_checksum_overhead(
         _sync(device)
         checksum_elapsed += time.perf_counter() - started
 
+        _sync(device)
+        started = time.perf_counter()
+        absolute_factor_scale(left, right)
+        _sync(device)
+        normalizer_elapsed += time.perf_counter() - started
+
     gemm_s = gemm_elapsed / repeats
     checksum_s = checksum_elapsed / repeats
+    normalizer_s = normalizer_elapsed / repeats
     ratio = checksum_s / gemm_s if gemm_s > 0.0 else float("inf")
+    normalizer_ratio = normalizer_s / gemm_s if gemm_s > 0.0 else float("inf")
     dtype_name = {
         torch.float32: "float32",
         torch.float64: "float64",
@@ -88,5 +101,7 @@ def measure_checksum_overhead(
         gemm_seconds=gemm_s,
         checksum_seconds=checksum_s,
         checksum_over_gemm=ratio,
+        normalizer_seconds=normalizer_s,
+        normalizer_over_gemm=normalizer_ratio,
         dtype_name=dtype_name,
     )

@@ -12,7 +12,7 @@ from enum import StrEnum
 import numpy as np
 import torch
 
-from assay.abft.gemm import normalized_checksum_residual
+from assay.abft.gemm import normalize_by_scale
 from assay.abft.triton_reduce import ones_matvec_triton
 
 _MATRIX_NDIM = 2
@@ -55,16 +55,50 @@ def ones_sided_checksums(
     return c_e, a_be
 
 
-def vector_residual_normalized(c_e: torch.Tensor, a_be: torch.Tensor) -> float:
-    """Normalized |sum(C@e) - sum(A@(B@e))| after promoting both vectors to fp64.
-
-    Algebraically the same family as noisefloor-v1's scalar checksum residual.
-    Reduction order can differ from summing every element of C; that gap is
-    why characterized configs still have an ambiguous band.
-    """
+def checksum_abs_residual(c_e: torch.Tensor, a_be: torch.Tensor) -> float:
+    """|sum(C@e) - sum(A@(B@e))| after promoting both vectors to float64."""
     c_cpu = c_e.detach().to(dtype=torch.float64, device="cpu").contiguous()
     a_cpu = a_be.detach().to(dtype=torch.float64, device="cpu").contiguous()
     product_sum = np.float64(np.sum(c_cpu.numpy(), dtype=np.float64))
     checksum = np.float64(np.sum(a_cpu.numpy(), dtype=np.float64))
-    _abs_residual, normalized = normalized_checksum_residual(product_sum, checksum)
-    return float(normalized)
+    return float(np.abs(np.subtract(product_sum, checksum)))
+
+
+def absolute_factor_scale(left: torch.Tensor, right: torch.Tensor) -> float:
+    """eᵀ |A| |B| e as (|A| column sums) · (|B| row sums), float64 accum."""
+    if left.ndim != _MATRIX_NDIM or right.ndim != _MATRIX_NDIM:
+        msg = "absolute factor scale expects 2-D A and B"
+        raise ValueError(msg)
+    if left.shape[1] != right.shape[0]:
+        msg = f"inner dimension mismatch {tuple(left.shape)} vs {tuple(right.shape)}"
+        raise ValueError(msg)
+    col_sums = left.detach().abs().sum(dim=0, dtype=torch.float64)
+    row_sums = right.detach().abs().sum(dim=1, dtype=torch.float64)
+    return float(torch.dot(col_sums, row_sums).item())
+
+
+def vector_residual_parts(
+    c_e: torch.Tensor,
+    a_be: torch.Tensor,
+    left: torch.Tensor,
+    right: torch.Tensor,
+) -> tuple[float, float, float]:
+    """Return (abs residual, residual-v2 scale, residual-v2).
+
+    Scale is eᵀ |A| |B| e. It does not depend on C.
+    """
+    abs_residual = np.float64(checksum_abs_residual(c_e, a_be))
+    scale = np.float64(absolute_factor_scale(left, right))
+    normalized = normalize_by_scale(abs_residual, scale)
+    return float(abs_residual), float(scale), float(normalized)
+
+
+def vector_residual_normalized(
+    c_e: torch.Tensor,
+    a_be: torch.Tensor,
+    left: torch.Tensor,
+    right: torch.Tensor,
+) -> float:
+    """residual-v2: abs checksum mismatch over eᵀ |A| |B| e."""
+    _abs_residual, _scale, normalized = vector_residual_parts(c_e, a_be, left, right)
+    return normalized

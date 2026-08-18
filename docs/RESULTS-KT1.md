@@ -4,11 +4,15 @@ STATUS: VOID -- NULL EVALUATION, NOT A KILL
 This evaluation was run with zero GPU noisefloor samples. A detector that
 is structurally incapable of returning FAIL cannot be measured for true
 positive rate, and 45 CPU calls at 16x16x16 are not production shapes.
+The evaluation additionally used residual-v1, a residual definition
+since found defective (`docs/RESIDUAL.md`): the denominator was the
+signed grand sum, whose cancellation artifact is not hardware noise.
+A valid KT-1 evaluation requires residual-v2 noisefloor data.
 The KT-1 bars (FPR < 1e-6 per GEMM at production shapes, >=90% exponent
 flip detection) are UNCHANGED and UNEVALUATED.
 This file is retained as evidence that the bars were not moved.
 Superseded by RESULTS-KT1.md v2, to be written after CP-3 produces
->=1 characterized GPU model.
+>=1 characterized GPU model under residual-v2.
 
 **Verdict: FAIL.** noisefloor-v1 `check_gemm` does not meet KT-1 as written
 at CP-0: it has not shown a false-positive rate below `1e-6` per GEMM at
