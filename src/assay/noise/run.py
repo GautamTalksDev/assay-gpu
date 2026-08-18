@@ -27,7 +27,6 @@ from assay.noise.methodology import load_methodology
 from assay.probe.identity import model_key, read_identity
 from assay.probe.telemetry import read_telemetry, telemetry_dict
 from assay.reference.compute import matmul_fp64
-from assay.reference.hashing import sha256_array
 from assay.reference.spec import CHARACTERIZATION_MAX_SIDE, WORKLOAD_GEMM_SHAPES
 from assay.workload.context import gemm_flags, require_cuda
 from assay.workload.gemm import gemm_numpy_pair
@@ -98,8 +97,20 @@ def expand_targets(
 
 
 def _result_sha256(tensor: torch.Tensor) -> str:
+    """SHA-256 of dtype, shape, and raw tensor bytes.
+
+    NumPy has no bfloat16 dtype, so this must not call Tensor.numpy() on
+    the original dtype. uint8 is representable; the dtype string in the
+    header keeps float32 and bfloat16 with identical payloads distinct.
+    """
     cpu = tensor.detach().contiguous().cpu()
-    return sha256_array(cpu.numpy())
+    header = f"{cpu.dtype}|{tuple(int(dim) for dim in cpu.shape)}".encode("ascii")
+    payload = cpu.view(torch.uint8).contiguous().numpy()
+    digest = hashlib.sha256()
+    digest.update(header)
+    digest.update(b"\0")
+    digest.update(payload.tobytes())
+    return digest.hexdigest()
 
 
 def _run_one_gemm(left_gpu: torch.Tensor, right_gpu: torch.Tensor) -> torch.Tensor:

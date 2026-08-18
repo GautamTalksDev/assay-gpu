@@ -7,6 +7,7 @@ from fractions import Fraction
 from pathlib import Path
 
 import pytest
+import torch
 
 from assay.noise.floats import encode_f64
 from assay.noise.lookup import (
@@ -16,6 +17,7 @@ from assay.noise.lookup import (
 )
 from assay.noise.methodology import load_methodology
 from assay.noise.quantiles import empirical_quantile
+from assay.noise.run import _result_sha256
 
 pytestmark = pytest.mark.cpu
 
@@ -92,3 +94,19 @@ def test_lookup_short_run_stays_uncharacterized(tmp_path: Path) -> None:
     assert found.n_samples == 2
     assert found.p_quantile_residual_hex is None
     assert found.sample_max_residual_hex == (0.25).hex()
+
+
+def test_result_sha256_covers_dtypes_and_separates_float32_from_bfloat16() -> None:
+    dtypes = (torch.float32, torch.bfloat16, torch.float16, torch.int8)
+    for dtype in dtypes:
+        digest = _result_sha256(torch.zeros(3, 5, dtype=dtype))
+        assert len(digest) == 64
+        int(digest, 16)
+
+    raw = torch.arange(8, dtype=torch.uint8)
+    as_f32 = raw.view(torch.float32)
+    as_bf16 = raw.view(torch.bfloat16)
+    f32_bytes = as_f32.contiguous().view(torch.uint8)
+    bf16_bytes = as_bf16.contiguous().view(torch.uint8)
+    assert torch.equal(f32_bytes, bf16_bytes)
+    assert _result_sha256(as_f32) != _result_sha256(as_bf16)

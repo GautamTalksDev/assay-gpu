@@ -6,6 +6,9 @@ Requires CUDA. Import is lazy so CPU CI does not need a GPU.
 The reduction accumulates in float64, then casts back to the input dtype.
 Integer-valued inputs whose row sums are exact in the output dtype must
 match the PyTorch GEMV path bitwise (see tests).
+
+The kernel is sm75-safe: program_id, masked load, f64 sum, store. No MMA,
+TMA, wgmma, fp8, or other post-Turing ops. BLOCK is a power-of-two constexpr.
 """
 
 from __future__ import annotations
@@ -38,13 +41,13 @@ def _kernel() -> Any:
     import triton.language as tl  # noqa: PLC0415
 
     @triton.jit  # type: ignore[untyped-decorator]
-    def row_sum_kernel(  # noqa: PLR0913, PLR0917
-        x_ptr: Any,
-        out_ptr: Any,
-        cols: Any,
-        stride_row: Any,
-        stride_col: Any,
-        BLOCK: Any,  # noqa: N803
+    def row_sum_kernel(  # type: ignore[no-untyped-def]  # noqa: PLR0913, PLR0917
+        x_ptr,
+        out_ptr,
+        cols,
+        stride_row,
+        stride_col,
+        BLOCK: tl.constexpr,  # noqa: N803
     ) -> None:
         row = tl.program_id(0)
         acc = tl.zeros((1,), dtype=tl.float64)
