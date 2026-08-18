@@ -12,24 +12,25 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 import torch
 
-from assay.abft.gemm import (
-    gemm_checksum_fp64,
-    normalized_checksum_residual,
-    sum_elements_fp64,
+from assay.abft.reduce import (
+    CheckBackend,
+    ones_sided_checksums,
+    vector_residual_normalized,
 )
 from assay.noise.blas import available_blas_libraries, blas_library
-from assay.noise.errors import gpu_to_fp64, max_abs_error, max_rel_error
 from assay.noise.floats import decode_f64, encode_f64
 from assay.noise.methodology import load_methodology
 from assay.probe.identity import model_key, read_identity
 from assay.probe.telemetry import read_telemetry, telemetry_dict
-from assay.reference.compute import matmul_fp64
 from assay.reference.spec import CHARACTERIZATION_MAX_SIDE, WORKLOAD_GEMM_SHAPES
 from assay.workload.context import gemm_flags, require_cuda
 from assay.workload.gemm import gemm_numpy_pair
+
+_WORKLOAD_IDS = {"W01": 1, "W02": 2, "W03": 3}
+_STABILITY_LAUNCHES = 2
+_CHECKSUM_BACKEND = CheckBackend.PYTORCH
 
 
 def tool_version() -> str:
@@ -120,6 +121,53 @@ def _run_one_gemm(left_gpu: torch.Tensor, right_gpu: torch.Tensor) -> torch.Tens
     return product
 
 
+def _factors_to_gpu(
+    left_np: Any,
+    right_np: Any,
+    target: GemmTarget,
+    device_index: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    left_gpu = torch.from_numpy(np.ascontiguousarray(left_np, dtype=np.float32)).to(
+        device=f"cuda:{device_index}", dtype=target.torch_dtype
+    )
+    right_gpu = torch.from_numpy(np.ascontiguousarray(right_np, dtype=np.float32)).to(
+        device=f"cuda:{device_index}", dtype=target.torch_dtype
+    )
+    return left_gpu, right_gpu
+
+
+def _sample_row(  # noqa: PLR0913
+    *,
+    target: GemmTarget,
+    sample_index: int,
+    blas_name: str,
+    left_gpu: torch.Tensor,
+    right_gpu: torch.Tensor,
+    product: torch.Tensor,
+    device_index: int,
+) -> dict[str, Any]:
+    before = read_telemetry(device_index)
+    c_e, a_be = ones_sided_checksums(left_gpu, right_gpu, product, _CHECKSUM_BACKEND)
+    residual = vector_residual_normalized(c_e, a_be)
+    after = read_telemetry(device_index)
+    return {
+        "workload": target.workload,
+        "dtype": target.dtype_name,
+        "shape": list(target.shape),
+        "sample_index": sample_index,
+        "repeat": sample_index,
+        "backend": _CHECKSUM_BACKEND.value,
+        "checksum_kind": "ones_sided_C_e_vs_A_Be",
+        "gemm": "torch.matmul",
+        "blas_library": blas_name,
+        "abft_residual_normalized": encode_f64(float(residual)),
+        "result_sha256": _result_sha256(product),
+        "telemetry_before": telemetry_dict(before),
+        "telemetry_after": telemetry_dict(after),
+        "kernel": f"preferred_blas_library={blas_name}",
+    }
+
+
 def characterize_gemm(  # noqa: PLR0913, PLR0915
     *,
     noisefloor_dir: Path,
@@ -145,93 +193,74 @@ def characterize_gemm(  # noqa: PLR0913, PLR0915
         msg = "no GEMM targets matched the filters"
         raise ValueError(msg)
     blas_names = available_blas_libraries()
-    ref_cache: dict[tuple[int, int, int], npt.NDArray[np.float64]] = {}
-    checksum_cache: dict[tuple[int, int, int], np.float64] = {}
-    factor_cache: dict[
-        tuple[int, int, int], tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]
-    ] = {}
     samples: list[dict[str, Any]] = []
     hashes: dict[tuple[str, str, tuple[int, ...], str], list[str]] = defaultdict(list)
-    gpu_copies: dict[tuple[str, str, tuple[int, ...], str], torch.Tensor] = {}
     run_deltas: dict[tuple[str, str, tuple[int, ...], str], list[float]] = defaultdict(
         list
     )
+    stability: dict[tuple[str, str, tuple[int, ...], str], bool] = {}
 
     for target in targets:
         m_dim, k_dim, n_dim = target.shape
-        if target.shape not in factor_cache:
-            left_np, right_np = gemm_numpy_pair(
-                m_dim, k_dim, n_dim, case_index=target.case_index
-            )
-            factor_cache[target.shape] = (left_np, right_np)
-            ref_cache[target.shape] = matmul_fp64(left_np, right_np)
-            checksum_cache[target.shape] = gemm_checksum_fp64(left_np, right_np)
-        left_np, right_np = factor_cache[target.shape]
-        reference = ref_cache[target.shape]
-        checksum = checksum_cache[target.shape]
-        left_gpu = torch.from_numpy(np.ascontiguousarray(left_np, dtype=np.float32)).to(
-            device=f"cuda:{device_index}", dtype=target.torch_dtype
-        )
-        right_gpu = torch.from_numpy(
-            np.ascontiguousarray(right_np, dtype=np.float32)
-        ).to(device=f"cuda:{device_index}", dtype=target.torch_dtype)
+        workload_id = _WORKLOAD_IDS[target.workload]
         with gemm_flags(
             fp16_reduced=target.fp16_reduced, bf16_reduced=target.bf16_reduced
         ):
             for blas_name in blas_names:
                 key = (target.workload, target.dtype_name, target.shape, blas_name)
                 with blas_library(blas_name):
-                    for repeat in range(repeats):
-                        before = read_telemetry(device_index)
-                        product = _run_one_gemm(left_gpu, right_gpu)
-                        after = read_telemetry(device_index)
-                        gpu_fp64 = gpu_to_fp64(product)
-                        product_sum = sum_elements_fp64(gpu_fp64)
-                        abs_abft, norm_abft = normalized_checksum_residual(
-                            product_sum, checksum
+                    for sample_index in range(repeats):
+                        left_np, right_np = gemm_numpy_pair(
+                            m_dim,
+                            k_dim,
+                            n_dim,
+                            case_index=target.case_index,
+                            sample_index=sample_index,
+                            workload_id=workload_id,
                         )
-                        digest = _result_sha256(product)
-                        hashes[key].append(digest)
-                        if key in gpu_copies:
-                            delta = torch.max(
-                                torch.abs(
-                                    product.to(torch.float32)
-                                    - gpu_copies[key].to(torch.float32)
-                                )
+                        left_gpu, right_gpu = _factors_to_gpu(
+                            left_np, right_np, target, device_index
+                        )
+                        launches = _STABILITY_LAUNCHES if sample_index == 0 else 1
+                        products = [
+                            _run_one_gemm(left_gpu, right_gpu)
+                            for _launch in range(launches)
+                        ]
+                        product = products[0]
+                        if sample_index == 0:
+                            first_digest = _result_sha256(products[0])
+                            second_digest = _result_sha256(products[-1])
+                            stability[key] = first_digest == second_digest
+                            hashes[key].extend(
+                                [_result_sha256(item) for item in products]
                             )
-                            run_deltas[key].append(float(delta.item()))
-                        else:
-                            gpu_copies[key] = product.detach().clone()
-                            run_deltas[key].append(0.0)
+                            if len(products) > 1:
+                                delta = torch.max(
+                                    torch.abs(
+                                        products[0].to(torch.float32)
+                                        - products[1].to(torch.float32)
+                                    )
+                                )
+                                run_deltas[key].append(float(delta.item()))
+                            else:
+                                run_deltas[key].append(0.0)
                         samples.append(
-                            {
-                                "workload": target.workload,
-                                "dtype": target.dtype_name,
-                                "shape": list(target.shape),
-                                "repeat": repeat,
-                                "blas_library": blas_name,
-                                "max_abs_error": encode_f64(
-                                    float(max_abs_error(gpu_fp64, reference))
-                                ),
-                                "max_rel_error": encode_f64(
-                                    float(max_rel_error(gpu_fp64, reference))
-                                ),
-                                "abft_residual_abs": encode_f64(float(abs_abft)),
-                                "abft_residual_normalized": encode_f64(
-                                    float(norm_abft)
-                                ),
-                                "result_sha256": digest,
-                                "telemetry_before": telemetry_dict(before),
-                                "telemetry_after": telemetry_dict(after),
-                                "kernel": (f"preferred_blas_library={blas_name}"),
-                            }
+                            _sample_row(
+                                target=target,
+                                sample_index=sample_index,
+                                blas_name=blas_name,
+                                left_gpu=left_gpu,
+                                right_gpu=right_gpu,
+                                product=product,
+                                device_index=device_index,
+                            )
                         )
-                        del product, gpu_fp64
-        del left_gpu, right_gpu
+                        del left_gpu, right_gpu, product
+                        del products
         torch.cuda.empty_cache()
 
     aggregates = _aggregates(
-        samples, hashes, run_deltas, gpu_model, methodology.min_samples
+        samples, hashes, run_deltas, stability, gpu_model, methodology.min_samples
     )
     finished = datetime.now(UTC)
     payload: dict[str, Any] = {
@@ -254,7 +283,12 @@ def characterize_gemm(  # noqa: PLR0913, PLR0915
             "pooling residuals across GPU models",
             "W04-W07 ABFT checksums (GEMM checksum only)",
             "shapes with max dim > 4096 unless --include-large",
+            "per-sample fp64 CPU reference GEMM (ABFT residual only)",
         ],
+        "sample_population": (
+            "one independent (A,B) per sample_index; "
+            "same-input launches are bitwise_stable only"
+        ),
         "samples": samples,
         "aggregates": aggregates,
     }
@@ -275,10 +309,11 @@ def characterize_gemm(  # noqa: PLR0913, PLR0915
     return out_path
 
 
-def _aggregates(
+def _aggregates(  # noqa: PLR0913, PLR0917
     samples: list[dict[str, Any]],
     hashes: dict[tuple[str, str, tuple[int, ...], str], list[str]],
     run_deltas: dict[tuple[str, str, tuple[int, ...], str], list[float]],
+    stability: dict[tuple[str, str, tuple[int, ...], str], bool],
     gpu_model: str,
     min_samples: int,
 ) -> list[dict[str, Any]]:
@@ -297,10 +332,8 @@ def _aggregates(
     for key, group in grouped.items():
         workload, dtype_name, shape, blas_name = key
         n_count = len(group)
-        bitwise = len(set(hashes[key])) == 1
+        bitwise = stability.get(key, False)
         delta_max = max(run_deltas[key]) if run_deltas[key] else 0.0
-        abs_vals = [decode_f64(s["max_abs_error"]) for s in group]
-        rel_vals = [decode_f64(s["max_rel_error"]) for s in group]
         abft_vals = [decode_f64(s["abft_residual_normalized"]) for s in group]
         status = "uncharacterized"
         reason = f"n={n_count} < min_samples={min_samples}; INCONCLUSIVE"
@@ -314,13 +347,13 @@ def _aggregates(
                 "dtype": dtype_name,
                 "shape": list(shape),
                 "blas_library": blas_name,
+                "backend": _CHECKSUM_BACKEND.value,
                 "n": n_count,
                 "status": status,
                 "reason": reason,
                 "bitwise_stable": bitwise,
+                "stability_sha256": hashes.get(key, []),
                 "run_to_run_max_abs_delta": encode_f64(delta_max),
-                "sample_max_abs_error": encode_f64(max(abs_vals)),
-                "sample_max_rel_error": encode_f64(max(rel_vals)),
                 "sample_max_abft_normalized": encode_f64(max(abft_vals)),
             }
         )

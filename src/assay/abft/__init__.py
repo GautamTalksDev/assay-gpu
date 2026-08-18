@@ -6,15 +6,19 @@ from assay.abft.check import (
     GemmCheckConfig,
     check_gemm,
     decide_from_lookup,
-    ones_sided_checksums,
-    vector_residual_normalized,
 )
 from assay.abft.gemm import (
     gemm_checksum_fp64,
     normalized_checksum_residual,
     sum_elements_fp64,
 )
-from assay.abft.reduce import CheckBackend, ones_matvec, ones_matvec_pytorch
+from assay.abft.reduce import (
+    CheckBackend,
+    ones_matvec,
+    ones_matvec_pytorch,
+    ones_sided_checksums,
+    vector_residual_normalized,
+)
 
 __all__ = [
     "CheckBackend",

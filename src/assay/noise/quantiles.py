@@ -17,6 +17,18 @@ def empirical_quantile(samples: list[float], p: Fraction) -> float | None:
     min_n = int((missing.denominator + missing.numerator - 1) // missing.numerator)
     if n < min_n:
         return None
+    return order_statistic(samples, p)
+
+
+def order_statistic(samples: list[float], p: Fraction) -> float:
+    """Inverse empirical CDF: x at index ceil(p*n)-1. No min_n gate.
+
+    For reporting a finite-sample percentile. Not a detection threshold.
+    """
+    n = len(samples)
+    if n < 1:
+        msg = "order_statistic requires at least one sample"
+        raise ValueError(msg)
     ordered = sorted(samples)
     rank = int(p * n)
     if p * n > rank:

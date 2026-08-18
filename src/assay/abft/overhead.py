@@ -7,8 +7,7 @@ from dataclasses import dataclass
 
 import torch
 
-from assay.abft.check import ones_sided_checksums
-from assay.abft.reduce import CheckBackend
+from assay.abft.reduce import CheckBackend, ones_sided_checksums
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,11 +7,13 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-import numpy as np
 import torch
 
-from assay.abft.gemm import normalized_checksum_residual
-from assay.abft.reduce import CheckBackend, ones_matvec
+from assay.abft.reduce import (
+    CheckBackend,
+    ones_sided_checksums,
+    vector_residual_normalized,
+)
 from assay.noise.floats import encode_f64
 from assay.noise.lookup import (
     CharacterizationStatus,
@@ -111,34 +113,6 @@ def _prepare_for_checksum(
             product.detach().to(device="cpu"),
         )
     return left, right, product
-
-
-def ones_sided_checksums(
-    left: torch.Tensor,
-    right: torch.Tensor,
-    product: torch.Tensor,
-    backend: CheckBackend,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return (C @ e, A @ (B @ e)) for e a column of ones."""
-    b_e = ones_matvec(right, backend)
-    a_be = left @ b_e
-    c_e = ones_matvec(product, backend)
-    return c_e, a_be
-
-
-def vector_residual_normalized(c_e: torch.Tensor, a_be: torch.Tensor) -> float:
-    """Normalized |sum(C@e) - sum(A@(B@e))| after promoting both vectors to fp64.
-
-    Algebraically the same family as noisefloor-v1's scalar checksum residual.
-    Reduction order can differ from summing every element of C; that gap is
-    why characterized configs still have an ambiguous band.
-    """
-    c_cpu = c_e.detach().to(dtype=torch.float64, device="cpu").contiguous()
-    a_cpu = a_be.detach().to(dtype=torch.float64, device="cpu").contiguous()
-    product_sum = np.float64(np.sum(c_cpu.numpy(), dtype=np.float64))
-    checksum = np.float64(np.sum(a_cpu.numpy(), dtype=np.float64))
-    _abs_residual, normalized = normalized_checksum_residual(product_sum, checksum)
-    return float(normalized)
 
 
 def decide_from_lookup(

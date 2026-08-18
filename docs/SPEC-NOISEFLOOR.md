@@ -50,10 +50,14 @@ uv run assay characterize --repeats N --device 0
 uv run assay characterize --repeats N --workload W02 --m 4096 --k 4096 --n 4096
 ```
 
-`--repeats` has **no default**. N is chosen by the operator. A tolerance at
-quantile `99999/100000` is defined only for `N >= min_samples` computed from
-that fraction. Smaller N still writes `run-*.json` (raw measurements) but
-lookup stays INCONCLUSIVE.
+`--repeats N` is N independent `(A, B)` draws (`sample_index` in the
+seed). Same-input launches of sample 0 are `bitwise_stable` only.
+
+A tolerance at quantile `99999/100000` is defined only for
+`N >= min_samples`. That quantile is **UNJUSTIFIED** until the pilot is
+read; `methodology-v1.json` is unchanged. Smaller N still writes
+`run-*.json` but lookup stays INCONCLUSIVE. `--pilot` writes
+`data/noisefloor/pilot/` and is never lookup input.
 
 Output path:
 
@@ -73,38 +77,83 @@ documented. Log any signup credit in `docs/BUDGET.md`.
 
 ## Per-sample quantities
 
-Recorded for each `(workload, shape, dtype, blas_library, repeat)`:
+Recorded for each `(workload, shape, dtype, blas_library, sample_index)`:
 
 | Field | Definition |
 | --- | --- |
-| max_abs_error | max_i \|C_gpu[i] - C_fp64[i]\| after promoting C_gpu to float64 (fp16/bf16 finite values are exact in fp64) |
-| max_rel_error | max \|C_gpu-C_fp64\|/\|C_fp64\| over elements where C_fp64 != +0. If every reference element is +0: 0 iff tensors equal, else inf |
-| abft_residual_abs | \|sum(C_gpu in fp64) - checksum(A,B)\| |
-| abft_residual_normalized | abs residual / max(\|checksum\|, \|sum(C)\|). If both sums are +0: 0 iff abs residual is 0, else inf |
+| abft_residual_normalized | ones-sided \|sum(C@e) - sum(A@(B@e))\| / max(\|sum(C@e)\|, \|sum(A@(B@e))\|) after promoting both vectors to fp64. Same residual `check_gemm` uses. |
+| backend | `pytorch` or `triton` (checksum reduction). Recorded so a floor cannot silently mix backends. |
+| sample_index | Independent `(A, B)` draw index. Not a same-input repeat. |
 | result_sha256 | SHA-256 of the GPU tensor in its native dtype (bitwise identity) |
 | telemetry_before/after | nvidia-smi `clocks.sm`, `clocks.mem`, `power.draw`, `temperature.gpu` (null if the query fails) |
 | blas_library | `torch.backends.cuda.preferred_blas_library` value actually selected |
 
-Checksum (GEMM only):
+A and B come from `gemm_numpy_pair(..., sample_index=..., workload_id=...)`.
+Per-sample fp64 CPU `matmul_fp64` is not recorded (it would dominate wall
+time at 4096 and is not the detector residual).
 
-```
-checksum = sum_k (sum_i A[i,k]) * (sum_j B[k,j])
-```
+## Measured bitwise determinism (Tesla T4 only)
 
-A and B are the seeded float64 factors from `gemm_numpy_pair`. Axis sums use
-`numpy.sum(..., dtype=float64)`. The k-combination is a Python loop of
-`multiply` then `add`. `sum(C)` uses `numpy.sum` on the promoted GPU result.
+Source: `assay run --double` on a Tesla T4, driver **580.159.04**, CUDA
+**13.0**, torch **2.13.0+cu130**. **44 of 44** suite cases reported
+`all_bitwise_identical: true`: every W01–W03 GEMM shape in fp32 / bf16 /
+fp16, all W04 SDPA shapes, W05 reductions, W06 transcendentals, W07
+transformer. cuBLAS on sm75 picked a stable kernel every time.
 
-C_fp64 is `matmul_fp64` from `src/assay/reference/compute.py` (K-loop
-multiply-then-add, no BLAS GEMM), computed once per shape and reused for
-every repeat.
+That is a measured property of **this** (GPU model, driver, CUDA, torch)
+tuple. It falsifies, on this hardware, the assumption that cuBLAS kernel
+selection is not deterministic across runs. It does **not** generalize to
+other GPU models, drivers, or torch builds until those are measured the
+same way. Do not copy this sentence onto an A100.
+
+## Sample population (implemented)
+
+One sample is one independent `(A, B)` draw from `uniform_-1_1`. The
+seed is a deterministic mix of `BASE_SEED`, workload id, shape index,
+and **sample index** (`sample_factor_seed` in
+`src/assay/reference/spec.py`). No wall-clock, no `hash()`.
+
+`--repeats N` is N independent draws. Same-input launches (two GEMMs
+of sample 0) populate `bitwise_stable` only. They are not quantile
+inputs.
+
+The ABFT residual recorded in `run-*.json` is the same ones-sided
+checksum `check_gemm` uses (`C @ e` vs `A @ (B @ e)`), with
+`backend` recorded on every sample (PyTorch GEMV in this version).
+
+## p99.999 is UNJUSTIFIED
+
+`target_quantile = 99999/100000` and `min_samples = ceil(1/(1-p)) =
+100000` were chosen at spec time **before any residual distribution
+existed**. That arithmetic is the count needed to observe at least one
+sample beyond p99.999; it is not a stable estimate of the tail, and it
+was never reconciled with KT-1's FPR `< 1e-6` (p99.999 is 1e-5, ten
+times looser). Do not change the quantile in
+`methodology-v1.json` until the pilot is read.
+
+Pilot (not a characterization): `assay characterize --pilot` writes
+`data/noisefloor/pilot/`. Lookup never reads that directory.
+
+## Open: checksum backend is not in the noisefloor key
+
+`ones_matvec_pytorch` is `matrix @ ones` in the **matrix dtype** (fp32
+GEMV / cuBLAS). `ones_matvec_triton` accumulates in **float64** then
+casts back. On integer-valued fp32 inputs at 2048×2048, row sums are
+~8.5e9, above the 2^24 exact-integer range, so the two backends
+disagree while both being "correct" for their accumulation type.
+
+`check_gemm` defaults to PyTorch but can be pointed at Triton. A
+threshold calibrated with one backend does not transfer to the other.
+Either force fp64 accumulation on both paths, or make `backend` part of
+the noisefloor lookup key. Not implemented here; sampling gates it.
 
 ## Aggregates
 
 Per `(gpu_model, workload, dtype, shape, blas_library)`:
 
 - n
-- bitwise_stable: all `result_sha256` identical
+- bitwise_stable: two launches of **sample 0** (same A, B) have identical
+  `result_sha256`. Independent draws are not expected to match.
 - run_to_run_max_abs_delta: max abs difference vs the first repeat, compared
   in float32 (magnitude of variation when bits differ)
 - sample maxima of abs error, rel error, ABFT normalized residual

@@ -40,6 +40,8 @@ def _measurement_files(noisefloor_dir: Path) -> list[Path]:
     for path in sorted(noisefloor_dir.glob("**/*.json")):
         if path.name in {"methodology-v1.json", "index.json"}:
             continue
+        if "pilot" in path.parts:
+            continue
         if path.name.startswith("run-") and path.suffix == ".json":
             files.append(path)
     return files

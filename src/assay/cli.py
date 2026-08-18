@@ -14,6 +14,7 @@ import typer
 from assay.abft.overhead import measure_checksum_overhead
 from assay.abft.reduce import CheckBackend
 from assay.noise.lookup import assay_verdict, lookup_abft_tolerance
+from assay.noise.pilot import PILOT_N, run_abft_pilot
 from assay.noise.run import characterize_gemm
 from assay.probe.environment import probe_environment
 from assay.reference.serialize import write_catalog
@@ -421,6 +422,13 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
     n_dim: Annotated[int | None, typer.Option("--n")] = None,
     dtype_name: Annotated[str, typer.Option("--dtype")] = "bfloat16",
     gpu_model: Annotated[str | None, typer.Option("--gpu-model")] = None,
+    pilot: Annotated[
+        bool,
+        typer.Option(
+            "--pilot",
+            help="W02 bf16 4096 cubed, 2000 samples. Not a characterization.",
+        ),
+    ] = False,
 ) -> None:
     """Measure GPU vs fp64 noise floor, or look up a stored tolerance."""
     shape: tuple[int, int, int] | None
@@ -430,6 +438,9 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
         shape = (m_dim, k_dim, n_dim)
     else:
         typer.echo("pass all of --m --k --n or none of them", err=True)
+        raise typer.Exit(code=1)
+    if lookup and pilot:
+        typer.echo("pass only one of --lookup and --pilot", err=True)
         raise typer.Exit(code=1)
     if lookup:
         lookup_shape = shape or (
@@ -445,6 +456,17 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             shape=lookup_shape,
             gpu_model=gpu_model,
         )
+        return
+    if pilot:
+        if not torch.cuda.is_available():
+            typer.echo("CUDA is required for assay characterize --pilot", err=True)
+            raise typer.Exit(code=1)
+        path = run_abft_pilot(
+            noisefloor_dir=noisefloor_dir,
+            device_index=device,
+            n_samples=repeats if repeats is not None else PILOT_N,
+        )
+        typer.echo(f"wrote {path}")
         return
     if repeats is None:
         typer.echo("--repeats is required to measure (no silent default)", err=True)

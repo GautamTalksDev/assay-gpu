@@ -73,3 +73,29 @@ W07_DECODE_STEPS = 8
 def seed_offset(workload_id: int, case_index: int) -> int:
     """Deterministic seed mix. Does not use Python's salted hash()."""
     return BASE_SEED + workload_id * 1_000_003 + case_index
+
+
+# Prime stride so sample_index cannot collide with case_index in seed_offset.
+# This is a seed mixer, not a detection threshold.
+_SAMPLE_STRIDE = 1_000_037
+
+
+def sample_factor_seed(
+    workload_id: int, shape_index: int, sample_index: int, factor: int
+) -> int:
+    """Seed for one GEMM factor. factor 0 is A, factor 1 is B.
+
+    Mix is BASE_SEED + workload id + shape index + sample index, integer
+    arithmetic only. sample_index=0 reproduces seed_offset(workload_id,
+    shape_index*2+factor).
+    """
+    if factor not in (0, 1):
+        msg = "factor must be 0 (A) or 1 (B)"
+        raise ValueError(msg)
+    if sample_index < 0:
+        msg = "sample_index must be >= 0"
+        raise ValueError(msg)
+    return (
+        seed_offset(workload_id, shape_index * 2 + factor)
+        + sample_index * _SAMPLE_STRIDE
+    )

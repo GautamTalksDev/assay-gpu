@@ -10,17 +10,24 @@ from assay.reference.arrays import generate_array
 from assay.reference.spec import (
     DISTRIBUTION_UNIFORM_UNIT,
     WORKLOAD_GEMM_SHAPES,
+    sample_factor_seed,
     seed_offset,
 )
 from assay.workload.context import gemm_flags, run_cuda_op
 from assay.workload.report import WorkloadResult
 
 
-def gemm_numpy_pair(
-    m_dim: int, k_dim: int, n_dim: int, *, case_index: int
+def gemm_numpy_pair(  # noqa: PLR0913
+    m_dim: int,
+    k_dim: int,
+    n_dim: int,
+    *,
+    case_index: int,
+    sample_index: int = 0,
+    workload_id: int = 1,
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-    seed_a = seed_offset(1, case_index * 2)
-    seed_b = seed_offset(1, case_index * 2 + 1)
+    seed_a = sample_factor_seed(workload_id, case_index, sample_index, 0)
+    seed_b = sample_factor_seed(workload_id, case_index, sample_index, 1)
     left = generate_array((m_dim, k_dim), seed_a, DISTRIBUTION_UNIFORM_UNIT)
     right = generate_array((k_dim, n_dim), seed_b, DISTRIBUTION_UNIFORM_UNIT)
     return (

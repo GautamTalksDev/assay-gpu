@@ -94,7 +94,8 @@ uv run assay keygen --out /tmp/operator.json
 uv run assay verify /tmp/assay.json --pubkey /tmp/operator.json
 uv run assay workload run --double    # GPU; bitwise identity, no goldens/ABFT
 uv run assay characterize --lookup --workload W02 --dtype bfloat16 --m 4096 --k 4096 --n 4096
-uv run assay characterize --repeats N   # GPU; writes data/noisefloor/**/run-*.json
+uv run assay characterize --repeats N   # GPU; independent (A,B) per sample
+uv run assay characterize --pilot        # GPU; W02 bf16 4096^3 N=2000; not a characterization
 uv run assay abft overhead --repeats N --m 512 --k 512 --n 512 --backend pytorch --device cpu
 ```
 
