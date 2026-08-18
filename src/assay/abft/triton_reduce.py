@@ -50,7 +50,7 @@ def _kernel() -> Any:
         BLOCK: tl.constexpr,  # noqa: N803
     ) -> None:
         row = tl.program_id(0)
-        acc = tl.zeros((1,), dtype=tl.float64)
+        acc = tl.zeros((), dtype=tl.float64)
         col = 0
         while col < cols:
             offs = col + tl.arange(0, BLOCK)
@@ -62,7 +62,7 @@ def _kernel() -> Any:
             )
             acc += tl.sum(vals.to(tl.float64), axis=0)
             col += BLOCK
-        tl.store(out_ptr + row, acc[0])
+        tl.store(out_ptr + row, acc)
 
     _KERNELS["row_sum"] = row_sum_kernel
     return row_sum_kernel
