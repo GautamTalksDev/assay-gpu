@@ -441,6 +441,20 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
         Path,
         typer.Option("--sweep-v3-output", help="JSONL output path for --sweep-v3."),
     ] = Path("data/noisefloor/pilot/sweep-v3.jsonl"),
+    sweep_v3_flips: Annotated[
+        bool,
+        typer.Option(
+            "--sweep-v3-flips",
+            help="Residual-v3 flip matrix. W02 bf16 4096 cubed, JSONL output.",
+        ),
+    ] = False,
+    sweep_v3_flips_output: Annotated[
+        Path,
+        typer.Option(
+            "--sweep-v3-flips-output",
+            help="JSONL output path for --sweep-v3-flips.",
+        ),
+    ] = Path("data/noisefloor/pilot/sweep-v3-flips.jsonl"),
 ) -> None:
     """Measure GPU vs fp64 noise floor, or look up a stored tolerance."""
     shape: tuple[int, int, int] | None
@@ -451,9 +465,12 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
     else:
         typer.echo("pass all of --m --k --n or none of them", err=True)
         raise typer.Exit(code=1)
-    exclusive = sum([lookup, pilot, sweep_v3])
+    exclusive = sum([lookup, pilot, sweep_v3, sweep_v3_flips])
     if exclusive > 1:
-        typer.echo("pass only one of --lookup, --pilot, and --sweep-v3", err=True)
+        typer.echo(
+            "pass only one of --lookup, --pilot, --sweep-v3, and --sweep-v3-flips",
+            err=True,
+        )
         raise typer.Exit(code=1)
     if lookup:
         lookup_shape = shape or (
@@ -469,6 +486,22 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             shape=lookup_shape,
             gpu_model=gpu_model,
         )
+        return
+    if sweep_v3_flips:
+        if not torch.cuda.is_available():
+            typer.echo(
+                "CUDA is required for assay characterize --sweep-v3-flips",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        from assay.noise.sweep_v3_flips import FLIP_N, run_v3_flip_sweep
+
+        path = run_v3_flip_sweep(
+            output_path=sweep_v3_flips_output,
+            device_index=device,
+            n_samples=repeats if repeats is not None else FLIP_N,
+        )
+        typer.echo(f"wrote {path}")
         return
     if sweep_v3:
         if not torch.cuda.is_available():
