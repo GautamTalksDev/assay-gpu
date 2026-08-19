@@ -94,33 +94,94 @@ Source: T4 sweep, git sha 7da9fb3; `scripts/analyze_v3_kscale.py` on
 
 | K | bit_class | n_flips | n | detected | rate |
 | --- | --- | --- | --- | --- | --- |
+| 512 | EXPONENT_HIGH | 1 | 100 | 78/100 | 78.00% |
+| 512 | EXPONENT_HIGH | 2 | 100 | 93/100 | 93.00% |
+| 512 | EXPONENT_HIGH | 4 | 100 | 92/100 | 92.00% |
+| 512 | EXPONENT_LOW | 1 | 100 | 69/100 | 69.00% |
+| 512 | EXPONENT_LOW | 2 | 100 | 95/100 | 95.00% |
+| 512 | EXPONENT_LOW | 4 | 100 | 100/100 | 100.00% |
+| 512 | MANTISSA_HIGH | 1 | 100 | 4/100 | 4.00% |
+| 512 | MANTISSA_HIGH | 2 | 100 | 8/100 | 8.00% |
+| 512 | MANTISSA_HIGH | 4 | 100 | 12/100 | 12.00% |
 | 512 | MANTISSA_LOW | 1 | 100 | 0/100 | 0.00% |
 | 512 | MANTISSA_LOW | 2 | 100 | 0/100 | 0.00% |
 | 512 | MANTISSA_LOW | 4 | 100 | 0/100 | 0.00% |
 | 512 | SIGN | 1 | 100 | 79/100 | 79.00% |
+| 512 | SIGN | 2 | 100 | 95/100 | 95.00% |
+| 512 | SIGN | 4 | 100 | 100/100 | 100.00% |
+| 1024 | EXPONENT_HIGH | 1 | 100 | 77/100 | 77.00% |
+| 1024 | EXPONENT_HIGH | 2 | 100 | 91/100 | 91.00% |
+| 1024 | EXPONENT_HIGH | 4 | 100 | 85/100 | 85.00% |
+| 1024 | EXPONENT_LOW | 1 | 100 | 75/100 | 75.00% |
+| 1024 | EXPONENT_LOW | 2 | 100 | 92/100 | 92.00% |
+| 1024 | EXPONENT_LOW | 4 | 100 | 99/100 | 99.00% |
+| 1024 | MANTISSA_HIGH | 1 | 100 | 1/100 | 1.00% |
+| 1024 | MANTISSA_HIGH | 2 | 100 | 9/100 | 9.00% |
+| 1024 | MANTISSA_HIGH | 4 | 100 | 9/100 | 9.00% |
 | 1024 | MANTISSA_LOW | 1 | 100 | 0/100 | 0.00% |
 | 1024 | MANTISSA_LOW | 2 | 100 | 0/100 | 0.00% |
 | 1024 | MANTISSA_LOW | 4 | 100 | 0/100 | 0.00% |
 | 1024 | SIGN | 1 | 100 | 75/100 | 75.00% |
+| 1024 | SIGN | 2 | 100 | 93/100 | 93.00% |
+| 1024 | SIGN | 4 | 100 | 99/100 | 99.00% |
+| 2048 | EXPONENT_HIGH | 1 | 100 | 88/100 | 88.00% |
+| 2048 | EXPONENT_HIGH | 2 | 100 | 95/100 | 95.00% |
+| 2048 | EXPONENT_HIGH | 4 | 100 | 96/100 | 96.00% |
+| 2048 | EXPONENT_LOW | 1 | 100 | 83/100 | 83.00% |
+| 2048 | EXPONENT_LOW | 2 | 100 | 97/100 | 97.00% |
+| 2048 | EXPONENT_LOW | 4 | 100 | 99/100 | 99.00% |
+| 2048 | MANTISSA_HIGH | 1 | 100 | 5/100 | 5.00% |
+| 2048 | MANTISSA_HIGH | 2 | 100 | 11/100 | 11.00% |
+| 2048 | MANTISSA_HIGH | 4 | 100 | 15/100 | 15.00% |
 | 2048 | MANTISSA_LOW | 1 | 100 | 0/100 | 0.00% |
 | 2048 | MANTISSA_LOW | 2 | 100 | 0/100 | 0.00% |
 | 2048 | MANTISSA_LOW | 4 | 100 | 0/100 | 0.00% |
 | 2048 | SIGN | 1 | 100 | 73/100 | 73.00% |
+| 2048 | SIGN | 2 | 100 | 99/100 | 99.00% |
+| 2048 | SIGN | 4 | 100 | 100/100 | 100.00% |
+| 4096 | EXPONENT_HIGH | 1 | 100 | 83/100 | 83.00% |
+| 4096 | EXPONENT_HIGH | 2 | 100 | 97/100 | 97.00% |
+| 4096 | EXPONENT_HIGH | 4 | 100 | 96/100 | 96.00% |
+| 4096 | EXPONENT_LOW | 1 | 100 | 79/100 | 79.00% |
+| 4096 | EXPONENT_LOW | 2 | 100 | 93/100 | 93.00% |
+| 4096 | EXPONENT_LOW | 4 | 100 | 99/100 | 99.00% |
+| 4096 | MANTISSA_HIGH | 1 | 100 | 7/100 | 7.00% |
+| 4096 | MANTISSA_HIGH | 2 | 100 | 12/100 | 12.00% |
+| 4096 | MANTISSA_HIGH | 4 | 100 | 18/100 | 18.00% |
 | 4096 | MANTISSA_LOW | 1 | 100 | 0/100 | 0.00% |
 | 4096 | MANTISSA_LOW | 2 | 100 | 0/100 | 0.00% |
 | 4096 | MANTISSA_LOW | 4 | 100 | 0/100 | 0.00% |
 | 4096 | SIGN | 1 | 100 | 81/100 | 81.00% |
+| 4096 | SIGN | 2 | 100 | 99/100 | 99.00% |
+| 4096 | SIGN | 4 | 100 | 100/100 | 100.00% |
+| 8192 | EXPONENT_HIGH | 1 | 100 | 82/100 | 82.00% |
+| 8192 | EXPONENT_HIGH | 2 | 100 | 94/100 | 94.00% |
+| 8192 | EXPONENT_HIGH | 4 | 100 | 100/100 | 100.00% |
+| 8192 | EXPONENT_LOW | 1 | 100 | 71/100 | 71.00% |
+| 8192 | EXPONENT_LOW | 2 | 100 | 96/100 | 96.00% |
+| 8192 | EXPONENT_LOW | 4 | 100 | 100/100 | 100.00% |
+| 8192 | MANTISSA_HIGH | 1 | 100 | 6/100 | 6.00% |
+| 8192 | MANTISSA_HIGH | 2 | 100 | 9/100 | 9.00% |
+| 8192 | MANTISSA_HIGH | 4 | 100 | 20/100 | 20.00% |
 | 8192 | MANTISSA_LOW | 1 | 100 | 0/100 | 0.00% |
 | 8192 | MANTISSA_LOW | 2 | 100 | 0/100 | 0.00% |
 | 8192 | MANTISSA_LOW | 4 | 100 | 0/100 | 0.00% |
 | 8192 | SIGN | 1 | 100 | 77/100 | 77.00% |
+| 8192 | SIGN | 2 | 100 | 97/100 | 97.00% |
+| 8192 | SIGN | 4 | 100 | 100/100 | 100.00% |
 
-Remaining 55 cells (EXPONENT_HIGH, EXPONENT_LOW, MANTISSA_HIGH, and SIGN at
-`n_flips` ∈ {2, 4}, each at all five K): measured on T4. Per-cell detection
-rates span 71–88% for EXPONENT classes, 1–7% for MANTISSA_HIGH, and ~77% for
-SIGN (pooled across all SIGN cells). No monotonic K dependence in any class.
+**Observations (measured, not explained in this document):**
 
-MANTISSA_LOW pooled: 0/1500 across all 15 cells (5 K × 3 flip counts).
+- EXPONENT_HIGH is non-monotonic in `n_flips` at K = 1024 (91% at 2 flips,
+  85% at 4) and at K = 2048 and K = 4096 (97% at 2 flips, 96% at 4). The
+  same effect was recorded at K = 4096, n = 200 in `docs/RESULTS-KT1-v3.md`.
+  Unexplained.
+- MANTISSA_HIGH rises with `n_flips` at every K but never exceeds 20%.
+- MANTISSA_LOW is 0/100 in all 15 cells across all five K.
+- The K = 4096 SIGN 1-flip rate here (81/100 = 81%) differs from the n = 200
+  rate in `docs/RESULTS-KT1-v3.md` (155/200 = 77.5%). Both are within
+  binomial noise at their respective sample sizes; no reconciliation is
+  attempted.
 
 ### 3.2 SIGN 1-flip vs K
 
