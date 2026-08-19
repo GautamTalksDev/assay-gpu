@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 
 from assay.abft.residual_v3 import residual_v3
@@ -25,6 +28,52 @@ from assay.probe.identity import model_key, read_identity
 from assay.reference.spec import WORKLOAD_GEMM_SHAPES
 from assay.workload.context import gemm_flags, require_cuda
 from assay.workload.gemm import gemm_numpy_pair
+
+
+def _git_sha() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return "unknown"
+
+
+def _build_metadata(device_index: int) -> dict[str, Any]:
+    driver = "unknown"
+    try:
+        driver = torch.cuda.get_driver_version()  # type: ignore[no-untyped-call]
+    except Exception:
+        pass
+    return {
+        "record_type": "metadata",
+        "residual_version": "v3",
+        "torch_version": torch.__version__,
+        "torch_cuda_version": torch.version.cuda or "unknown",
+        "gpu_name": torch.cuda.get_device_name(device_index),
+        "driver_version": str(driver),
+        "numpy_version": np.__version__,
+        "python_version": sys.version,
+        "git_sha": _git_sha(),
+    }
+
+
+def _has_metadata_header(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    with path.open("r", encoding="utf-8") as fh:
+        first = fh.readline().strip()
+        if not first:
+            return False
+        try:
+            obj = json.loads(first)
+            return obj.get("record_type") == "metadata"
+        except json.JSONDecodeError:
+            return False
 
 
 def _last_completed_index(path: Path) -> int:
@@ -82,6 +131,11 @@ def run_v3_sweep(
         print(f"resuming from sample_index={start_index} (found {resume_from} completed)")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not _has_metadata_header(output_path):
+        with output_path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(_build_metadata(device_index), sort_keys=True) + "\n")
+            fh.flush()
 
     with (
         gemm_flags(fp16_reduced=target.fp16_reduced, bf16_reduced=target.bf16_reduced),

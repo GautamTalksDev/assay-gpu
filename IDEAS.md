@@ -43,5 +43,8 @@ bugs only. If an idea looks like a product, it stays here.
     the `|B|` factor could be cached per weight matrix and amortized.
     Untested. Do not build this to paper over T4 overhead at 2048³.
 
+20. pyproject hard-pinned numpy==2.4.6 — caught on Kaggle. Audit all
+    exact pins before any PyPI release.
+
 When one of these becomes necessary, copy it into a checkpoint and
 delete it from this list. Until then, leave it.

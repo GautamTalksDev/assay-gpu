@@ -11,14 +11,20 @@ from pathlib import Path
 import numpy as np
 
 
-def _load(path: Path) -> list[dict]:
+def _load(path: Path) -> tuple[dict | None, list[dict]]:
+    metadata = None
     rows = []
     with path.open("r", encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
-            if line:
-                rows.append(json.loads(line))
-    return rows
+            if not line:
+                continue
+            obj = json.loads(line)
+            if obj.get("record_type") == "metadata":
+                metadata = obj
+            else:
+                rows.append(obj)
+    return metadata, rows
 
 
 def _decode(payload: dict) -> float:
@@ -35,7 +41,14 @@ def main() -> None:
         print(f"usage: {sys.argv[0]} <sweep-v3.jsonl>", file=sys.stderr)
         sys.exit(1)
     path = Path(sys.argv[1])
-    rows = _load(path)
+    metadata, rows = _load(path)
+    if metadata:
+        print("=== environment ===")
+        for key in ("torch_version", "torch_cuda_version", "gpu_name",
+                     "driver_version", "numpy_version", "python_version",
+                     "git_sha", "residual_version"):
+            print(f"  {key}: {metadata.get(key, 'n/a')}")
+        print()
     if not rows:
         print("no samples", file=sys.stderr)
         sys.exit(1)

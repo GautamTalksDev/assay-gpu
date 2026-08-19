@@ -40,7 +40,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "cryptography", specifier = "==44.0.3" },
-    { name = "numpy", specifier = "==2.4.6" },
+    { name = "numpy", specifier = ">=1.26,<3" },
     { name = "torch" },
     { name = "typer" },
 ]

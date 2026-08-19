@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 authors = [{ name = "assay-gpu contributors" }]
 dependencies = [
     "cryptography==44.0.3",
-    "numpy==2.4.6",
+    "numpy>=1.26,<3",
     "torch",
     "typer",
 ]
