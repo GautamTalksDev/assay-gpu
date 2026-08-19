@@ -362,3 +362,49 @@ The pilot still emits, for the same samples:
 
 Those fields are how the PREDICTIONS section is tested. They are not
 a third residual.
+
+## residual-v3 (elementwise) — predictions locked 2026-08-19
+
+Change under test: replace the scalar reduction
+
+```
+|sum(Ce) - sum(A(Be))| / (eᵀ|A||B|e)
+```
+
+with a per-row comparison
+
+```
+max_i |d_i - d'_i| / scale_i,    scale_i = |A_i| |B| e    (fp64)
+```
+
+where `d = C @ e` and `d' = A @ (B @ e)` are length-M vectors.
+
+Rationale: the v2 residual sums away M−1 degrees of freedom before
+comparing. Huang–Abraham ABFT compares elementwise. The observed
+"structural invisibility" of SIGN and MANTISSA classes
+(`docs/RESULTS-KT1-v2.md`: 0/1800 samples above the clean floor) may
+be an artifact of the reduction rather than a property of the checksum.
+
+### PREDICTIONS (no v3 data has been observed at time of writing)
+
+These numbers are locked before any v3 residual has been computed.
+Target: W02, bfloat16, 4096³, T4 GPU, n = 2000 independent
+`uniform_-1_1` draws.
+
+| ID | Claim | Range |
+| --- | --- | --- |
+| P1 | clean per-row relative floor, median | 2e-6 to 8e-6 |
+| P2 | clean per-row max/median | 4 to 15 |
+| P3 | SIGN 1-flip, median ratio to floor | 2 to 10 |
+| P4 | MANTISSA_LOW 1-flip, median ratio to floor | still < 1 |
+| P5 | EXPONENT_LOW 1-flip detection rate | > 70% |
+
+**FALSIFIER:** if P1 comes back near 5e-8 (i.e. the per-row floor is
+close to the v2 global floor), the SNR gain does not exist, the
+elementwise hypothesis is wrong, and the original invisibility finding
+stands as published in `docs/RESULTS-KT1-v2.md`.
+
+**RISK TO P1:** this assumes accumulation errors are independent
+across rows. Shared kernel tiling or shared reduction order could
+correlate them and collapse the gain toward 1×. Row-to-row correlation
+is to be measured in the same run.
