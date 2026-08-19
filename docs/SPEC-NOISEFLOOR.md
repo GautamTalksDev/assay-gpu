@@ -130,8 +130,31 @@ with `residual_version` on every sample. Lookup ignores residual-v1.
 existed**. That arithmetic is the count needed to observe at least one
 sample beyond p99.999; it is not a stable estimate of the tail, and it
 was never reconciled with KT-1's FPR `< 1e-6` (p99.999 is 1e-5, ten
-times looser). Do not change the quantile in
-`methodology-v1.json` until the pilot is read.
+times looser). **Do not edit `methodology-v1.json`.**
+
+Tesla T4 residual-v2 pilot (W02, bfloat16, 4096³, n = 2000):
+
+| N | running p99 |
+| --- | --- |
+| 100 | `3.83e-8` |
+| 2000 | `4.16e-8` |
+
+8% drift across a 20× sample increase. max/median = 5.22. p99.9 =
+`5.07e-8`, max = `5.57e-8`. The distribution is pinned by a few
+thousand draws. 100000 samples are not needed to see this tail.
+
+`min_samples = 100000` is still the correct n for the **current**
+quantile `99999/100000`: that is how many points the order statistic
+requires before it is defined, not a measurement of this tail. A
+revised pair that matches the measured shape, not yet applied:
+
+- `target_quantile = 999/1000` (p99.9)
+- `min_samples = 2000`
+
+p99.9 is defined at n ≥ 1000. 2000 is the n that was actually run, and
+running_p99 was already flat at n = 100. This would not, by itself, be
+a KT-1 FPR `< 1e-6` proof (p99.9 is 1e-3). It would stop requiring a
+100000-sample characterization of a light-tailed residual.
 
 Pilot (not a characterization): `assay characterize --pilot` writes
 `data/noisefloor/pilot/`. Lookup never reads that directory.

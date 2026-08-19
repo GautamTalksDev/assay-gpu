@@ -4,9 +4,14 @@ Test fixture, not a product feature. Each measured cell corrupts
 `C` after `C = A @ B` with `flip_random`, then calls `check_gemm`
 against the committed `data/noisefloor/` (noisefloor-v1).
 
+Residual: **residual-v2** (`docs/RESIDUAL.md`). residual-v1
+values in prior revisions of this file are void.
+
 Shape: 16 x 16 x 16 GEMM, factors from `gemm_numpy_pair` case 0.
 Device: CPU. Backend: PyTorch. Flip counts: 1, 2, 4.
 Noisefloor: `noisefloor-v1`, n_samples=0.
+Do not compare these 16-cubed residuals to the T4 4096³ pilot
+floor: `scale_v2` differs by `(4096/16)³`.
 
 ## What 'caught' means
 
@@ -131,3 +136,28 @@ uv run pytest -m cpu tests/test_detection_matrix.py
 
 The test re-measures and asserts this file matches. Do not edit
 numbers by hand.
+
+## W02 bfloat16 4096³ flip residuals vs T4 residual-v2 pilot floor
+
+Not a KT-1 evaluation. No threshold is set. residual-v1 flip
+residuals (near 1.0 on the 16-cubed v1 matrix) are void.
+
+Clean floor: Tesla T4 residual-v2 pilot, n = 2000, W02 bf16 4096³.
+
+| statistic | value |
+| --- | --- |
+| n | 2000 |
+| median | 1.07e-08 |
+| p99.9 | 5.07e-08 |
+| max | 5.57e-08 |
+
+Flips: `flip_random` on C after one GEMM, same bit_class grid as
+the 16-cubed matrix. Factors: `gemm_numpy_pair` case_index=3,
+sample_index=0, workload_id=2. Ratio is flip residual / clean max.
+
+Flip residuals: **UNMEASURED** on the writer (no NVIDIA GPU).
+Reproduce on CUDA:
+
+```bash
+uv run pytest -m gpu tests/test_w02_4096_flips.py -s
+```

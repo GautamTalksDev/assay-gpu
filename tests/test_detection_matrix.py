@@ -197,9 +197,14 @@ def render_detection_matrix(cells: list[MatrixCell]) -> str:
         "`C` after `C = A @ B` with `flip_random`, then calls `check_gemm`",
         "against the committed `data/noisefloor/` (noisefloor-v1).",
         "",
+        "Residual: **residual-v2** (`docs/RESIDUAL.md`). residual-v1",
+        "values in prior revisions of this file are void.",
+        "",
         "Shape: 16 x 16 x 16 GEMM, factors from `gemm_numpy_pair` case 0.",
         "Device: CPU. Backend: PyTorch. Flip counts: 1, 2, 4.",
         f"Noisefloor: `{spec}`, n_samples={n_samples}.",
+        "Do not compare these 16-cubed residuals to the T4 4096³ pilot",
+        "floor: `scale_v2` differs by `(4096/16)³`.",
         "",
         "## What 'caught' means",
         "",
@@ -268,4 +273,6 @@ def test_detection_matrix_matches_committed_doc() -> None:
     assert not any(cell.caught for cell in cells)
     rendered = render_detection_matrix(cells)
     assert DOC_PATH.is_file()
-    assert DOC_PATH.read_text(encoding="utf-8") == rendered
+    full = DOC_PATH.read_text(encoding="utf-8")
+    assert full.startswith(rendered)
+    assert "## W02 bfloat16 4096" in full

@@ -233,6 +233,25 @@ attach to. Residual-v2's tail, if any, is numerator cancellation in
 `scale_v2`) is also near zero; a mild negative would mean larger
 factors slightly over-normalize, which is allowed.
 
+## PREDICTIONS CONFIRMED
+
+Tesla T4, W02, bfloat16, 4096³, n = 2000, residual-v2. Written after
+the measurements. The locked predictions were not edited.
+
+| Claim | Predicted | Measured |
+| --- | --- | --- |
+| median | `1.3e-8` (`5e-9`–`2e-7`) | **`1.07e-8`** |
+| max / median | `6` (`4`–`15`) | **`5.22`** |
+| Pearson(residual, `1/scale`) | `\|r\| < 0.2` | **`-0.0096`** |
+
+v1 Pearson vs `1/scale` was 0.794. The normalizer's contribution to the
+tail is gone. `scale_v2` spanned `17.169e9` to `17.193e9`,
+max/median = **1.0007**, against `M·K·N/4 = 17.180e9`.
+
+Also measured (not predicted): p99.9 = `5.07e-8`, max = `5.57e-8`.
+`running_p99` was `3.83e-8` at N = 100 and `4.16e-8` at N = 2000
+(8% drift across a 20× increase). See `docs/SPEC-NOISEFLOOR.md`.
+
 ## Candidates rejected
 
 ### Keep `scale_v1`, or `scale_v1` plus a floor
