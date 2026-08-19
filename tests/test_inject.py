@@ -48,6 +48,17 @@ def _pattern(tensor: torch.Tensor) -> int:
     raise AssertionError(msg)
 
 
+def test_bf16_bit_class_selects_ieee_fields() -> None:
+    """bf16: sign 15 | exponent 14-7 | mantissa 6-0. High split is ceil(w/2)."""
+    assert LAYOUT_BF16.sign == (15,)
+    assert LAYOUT_BF16.exponent_high == (11, 12, 13, 14)
+    assert LAYOUT_BF16.exponent_low == (7, 8, 9, 10)
+    assert LAYOUT_BF16.mantissa_high == (3, 4, 5, 6)
+    assert LAYOUT_BF16.mantissa_low == (0, 1, 2)
+    assert 7 in LAYOUT_BF16.exponent_low
+    assert 14 in LAYOUT_BF16.exponent_high
+
+
 def test_layouts_partition_every_bit() -> None:
     for layout in (LAYOUT_FP32, LAYOUT_FP16, LAYOUT_BF16, LAYOUT_INT8):
         bits = layout.all_bits()

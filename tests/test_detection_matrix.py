@@ -276,3 +276,6 @@ def test_detection_matrix_matches_committed_doc() -> None:
     full = DOC_PATH.read_text(encoding="utf-8")
     assert full.startswith(rendered)
     assert "## W02 bfloat16 4096" in full
+    assert "exponent LSB (bit 7)" in full
+    assert "C after the GEMM" in full
+    assert "Not a KT-1 evaluation" in full

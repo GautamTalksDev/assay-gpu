@@ -140,7 +140,8 @@ numbers by hand.
 ## W02 bfloat16 4096³ flip residuals vs T4 residual-v2 pilot floor
 
 Not a KT-1 evaluation. No threshold is set. residual-v1 flip
-residuals (near 1.0 on the 16-cubed v1 matrix) are void.
+residuals are void. A single `sample_index=0` draw per cell is
+not evidence; cells below are n = 200 independent `(A, B)`.
 
 Clean floor: Tesla T4 residual-v2 pilot, n = 2000, W02 bf16 4096³.
 
@@ -151,12 +152,43 @@ Clean floor: Tesla T4 residual-v2 pilot, n = 2000, W02 bf16 4096³.
 | p99.9 | 5.07e-08 |
 | max | 5.57e-08 |
 
-Flips: `flip_random` on C after one GEMM, same bit_class grid as
-the 16-cubed matrix. Factors: `gemm_numpy_pair` case_index=3,
-sample_index=0, workload_id=2. Ratio is flip residual / clean max.
+Ratio is residual-v2 / clean max (5.57e-08). `n(ratio>1)` is the count of samples with
+ratio > 1 or non-finite, out of 200. Not a pass/fail rule.
 
-Flip residuals: **UNMEASURED** on the writer (no NVIDIA GPU).
-Reproduce on CUDA:
+bfloat16 bit_class → bit indices (bit 0 is IEEE LSB of the 16-bit
+pattern). Exponent field is bits 14-7 (8 bits). Mantissa is 6-0
+(7 bits). Split is ceil(field_width/2) on the high side
+(`LAYOUT_BF16` in `src/assay/inject/bits.py`).
+
+| bit_class | bits | field role |
+| --- | --- | --- |
+| SIGN | 15 | sign |
+| EXPONENT_HIGH | 11, 12, 13, 14 | exponent bits [4:7], includes MSB |
+| EXPONENT_LOW | 7, 8, 9, 10 | exponent bits [0:3], includes LSB |
+| MANTISSA_HIGH | 3, 4, 5, 6 | mantissa bits [3:6] |
+| MANTISSA_LOW | 0, 1, 2 | mantissa bits [0:2] |
+
+`flip_random` draws uniformly among the bits in the class.
+**EXPONENT_LOW includes the exponent LSB (bit 7).** Flipping only
+that bit scales one element by 2x or 1/2. That is a small change to
+a 4096-term ones-vector row sum: a structural property of this
+checksum, not a detector bug. The same class also contains bits
+8, 9, and 10 (element scale 4x, 16x, 256x), so a 1-flip cell is a
+mixture of those four magnitudes.
+
+SIGN is bit 15 only: `C_ij → -C_ij`, which adds `-2 C_ij` to the
+row sum. The ones-vector can cancel that the same way it can
+cancel a mantissa ULP.
+
+Flips are injected into **C after the GEMM**. That is not an
+intermediate accumulator SDC.
+
+Factors: `gemm_numpy_pair` case_index=3, workload_id=2,
+`sample_index` in 0..199 (same mixer as the pilot). One GEMM per
+sample_index; every (bit_class, n_flips) reuses that C.
+
+200-sample flip residuals: **UNMEASURED** on the writer
+(no NVIDIA GPU). Reproduce on CUDA (~200 GEMMs at 4096³):
 
 ```bash
 uv run pytest -m gpu tests/test_w02_4096_flips.py -s
