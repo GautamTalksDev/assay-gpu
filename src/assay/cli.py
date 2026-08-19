@@ -455,6 +455,27 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             help="JSONL output path for --sweep-v3-flips.",
         ),
     ] = Path("data/noisefloor/pilot/sweep-v3-flips.jsonl"),
+    sweep_v3_kscale: Annotated[
+        bool,
+        typer.Option(
+            "--sweep-v3-kscale",
+            help="Residual-v3 K-scaling study. W02 bf16, JSONL output.",
+        ),
+    ] = False,
+    sweep_v3_kscale_output: Annotated[
+        Path,
+        typer.Option(
+            "--sweep-v3-kscale-output",
+            help="JSONL output path for --sweep-v3-kscale.",
+        ),
+    ] = Path("data/noisefloor/pilot/sweep-v3-kscale.jsonl"),
+    k_values: Annotated[
+        str | None,
+        typer.Option(
+            "--k-values",
+            help="Comma-separated inner K dimensions for --sweep-v3-kscale.",
+        ),
+    ] = None,
 ) -> None:
     """Measure GPU vs fp64 noise floor, or look up a stored tolerance."""
     shape: tuple[int, int, int] | None
@@ -465,10 +486,11 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
     else:
         typer.echo("pass all of --m --k --n or none of them", err=True)
         raise typer.Exit(code=1)
-    exclusive = sum([lookup, pilot, sweep_v3, sweep_v3_flips])
+    exclusive = sum([lookup, pilot, sweep_v3, sweep_v3_flips, sweep_v3_kscale])
     if exclusive > 1:
         typer.echo(
-            "pass only one of --lookup, --pilot, --sweep-v3, and --sweep-v3-flips",
+            "pass only one of --lookup, --pilot, --sweep-v3, "
+            "--sweep-v3-flips, and --sweep-v3-kscale",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -486,6 +508,29 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             shape=lookup_shape,
             gpu_model=gpu_model,
         )
+        return
+    if sweep_v3_kscale:
+        if not torch.cuda.is_available():
+            typer.echo(
+                "CUDA is required for assay characterize --sweep-v3-kscale",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        from assay.noise.sweep_v3_kscale import (
+            K_VALUES_DEFAULT,
+            parse_k_values,
+            run_v3_kscale_sweep,
+        )
+
+        selected = (
+            parse_k_values(k_values) if k_values is not None else K_VALUES_DEFAULT
+        )
+        path = run_v3_kscale_sweep(
+            output_path=sweep_v3_kscale_output,
+            device_index=device,
+            k_values=selected,
+        )
+        typer.echo(f"wrote {path}")
         return
     if sweep_v3_flips:
         if not torch.cuda.is_available():

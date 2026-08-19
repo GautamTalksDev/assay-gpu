@@ -1,20 +1,6 @@
-"""Empirical noise floor characterization."""
+"""Empirical noise floor characterization.
 
-from assay.noise.lookup import (
-    CharacterizationStatus,
-    ToleranceLookup,
-    assay_verdict,
-    lookup_abft_tolerance,
-)
-from assay.noise.methodology import Methodology, load_methodology
-from assay.noise.run import characterize_gemm
-
-__all__ = [
-    "CharacterizationStatus",
-    "Methodology",
-    "ToleranceLookup",
-    "assay_verdict",
-    "characterize_gemm",
-    "load_methodology",
-    "lookup_abft_tolerance",
-]
+Import submodules directly (e.g. ``assay.noise.lookup``). This package
+does not re-export symbols at import time — eager re-exports created a
+circular import through ``assay.abft.check``.
+"""
