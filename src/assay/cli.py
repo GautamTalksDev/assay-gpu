@@ -462,6 +462,13 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             help="Residual-v3 K-scaling study. W02 bf16, JSONL output.",
         ),
     ] = False,
+    sweep_v3_fpr: Annotated[
+        bool,
+        typer.Option(
+            "--sweep-v3-fpr",
+            help="Residual-v3 FPR tail-data sweep. W02 bf16 4096 cubed, JSONL.",
+        ),
+    ] = False,
     sweep_v3_kscale_output: Annotated[
         Path,
         typer.Option(
@@ -469,6 +476,20 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             help="JSONL output path for --sweep-v3-kscale.",
         ),
     ] = Path("data/noisefloor/pilot/sweep-v3-kscale.jsonl"),
+    sweep_v3_fpr_output: Annotated[
+        Path,
+        typer.Option(
+            "--sweep-v3-fpr-output",
+            help="JSONL output path for --sweep-v3-fpr.",
+        ),
+    ] = Path("data/noisefloor/pilot/sweep-v3-fpr.jsonl"),
+    fpr_n: Annotated[
+        int | None,
+        typer.Option(
+            "--fpr-n",
+            help="Total clean samples for --sweep-v3-fpr (default 20000).",
+        ),
+    ] = None,
     k_values: Annotated[
         str | None,
         typer.Option(
@@ -486,11 +507,11 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
     else:
         typer.echo("pass all of --m --k --n or none of them", err=True)
         raise typer.Exit(code=1)
-    exclusive = sum([lookup, pilot, sweep_v3, sweep_v3_flips, sweep_v3_kscale])
+    exclusive = sum([lookup, pilot, sweep_v3, sweep_v3_flips, sweep_v3_kscale, sweep_v3_fpr])
     if exclusive > 1:
         typer.echo(
             "pass only one of --lookup, --pilot, --sweep-v3, "
-            "--sweep-v3-flips, and --sweep-v3-kscale",
+            "--sweep-v3-flips, --sweep-v3-kscale, and --sweep-v3-fpr",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -529,6 +550,22 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             output_path=sweep_v3_kscale_output,
             device_index=device,
             k_values=selected,
+        )
+        typer.echo(f"wrote {path}")
+        return
+    if sweep_v3_fpr:
+        if not torch.cuda.is_available():
+            typer.echo(
+                "CUDA is required for assay characterize --sweep-v3-fpr",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        from assay.noise.sweep_v3_fpr import DEFAULT_N, run_v3_fpr_sweep
+
+        path = run_v3_fpr_sweep(
+            output_path=sweep_v3_fpr_output,
+            device_index=device,
+            n_samples=fpr_n if fpr_n is not None else DEFAULT_N,
         )
         typer.echo(f"wrote {path}")
         return

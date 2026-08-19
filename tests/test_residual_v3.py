@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-from assay.abft.residual_v3 import _fixed_row_indices, residual_v3
+from assay.abft.residual_v3 import _fixed_row_indices, residual_v3, residual_v3_rows
 
 
 @pytest.mark.cpu
@@ -94,6 +94,22 @@ class TestResidualV3:
         # M=4 <= 256, so all rows returned
         assert len(result["r_rows"]) == 4
         assert result["row_indices"] == [0, 1, 2, 3]
+
+    def test_residual_v3_rows_matches_aggregate_stats_exactly(self) -> None:
+        """r_max, r_median, r_p99 from residual_v3 match residual_v3_rows exactly."""
+        rng = np.random.default_rng(20260819)
+        a = torch.from_numpy(rng.standard_normal((32, 32)).astype(np.float64))
+        b = torch.from_numpy(rng.standard_normal((32, 32)).astype(np.float64))
+        c = a @ b
+        c[5, 3] += 0.25
+        c[17, 9] -= 0.125
+
+        r_np = residual_v3_rows(a, b, c)
+        result = residual_v3(a, b, c)
+
+        assert result["r_max"] == float(np.max(r_np))
+        assert result["r_median"] == float(np.median(r_np))
+        assert result["r_p99"] == float(np.percentile(r_np, 99))
 
 
 @pytest.mark.cpu
