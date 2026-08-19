@@ -408,3 +408,34 @@ stands as published in `docs/RESULTS-KT1-v2.md`.
 across rows. Shared kernel tiling or shared reduction order could
 correlate them and collapse the gain toward 1×. Row-to-row correlation
 is to be measured in the same run.
+
+## K-scaling study — predictions locked 2026-08-19
+
+Question: how does detectability under residual-v3 vary with K?
+
+Setup: W02 bf16, M = N = 4096 fixed, K ∈ {512, 1024, 2048, 4096, 8192}.
+Clean floor n = 500 per K. Flip matrix n = 100 per (K, bit_class,
+n_flips). Threshold per K = observed clean max at that K.
+
+Mechanism under test: a single-element perturbation of magnitude d
+enters one row sum of K terms. Clean accumulation error grows as
+~√K · u · |A_i| |B| e. Signal-to-floor should therefore fall as
+~1/√K, and detection should degrade monotonically with K.
+
+### PREDICTIONS (no K-scaling data observed at time of writing)
+
+| ID | Claim |
+| --- | --- |
+| Q1 | clean per-row floor r_median scales as K^a, a ∈ [0.4, 0.6] (i.e. roughly √K); at K = 4096 it is 3.64e-7 by measurement |
+| Q2 | SIGN 1-flip detection falls monotonically with K |
+| Q3 | SIGN 1-flip detection at K = 512 is > 95% |
+| Q4 | SIGN 1-flip detection at K = 8192 is < 70% |
+| Q5 | MANTISSA_LOW remains 0/100 at every K, including K = 512 |
+
+**FALSIFIER:** if detection is flat across a 16× range of K, the
+√K mechanism is wrong and the finding reduces to a single-shape
+observation with no predictive content.
+
+**RISK:** Q5 may fail at small K — a mantissa-LSB perturbation could
+clear the floor once K is small enough. If so, Q5's failure locates
+the crossover, which is a stronger result than Q5 holding.
