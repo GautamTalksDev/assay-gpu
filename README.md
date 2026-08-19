@@ -1,6 +1,6 @@
 # assay-gpu
 
-**KT-1 status: FAIL.** Ones-vector checksum detects 44.75% of exponent-bit flips at n_flips=1 (T4, bf16, 4096³); ≥90% required. See `docs/RESULTS-KT1-v2.md`.
+**KT-1 status: UNEVALUATED (pending v3 write-up).** Prior void evaluations: `docs/RESULTS-KT1-v2.md`, `docs/RESULTS-KT1.md`.
 **KT-2: FAIL.** See `docs/RESULTS-KT2.md`.
 
 The detector was not retuned. The 10% overhead bar was not moved to 25%.
@@ -37,7 +37,7 @@ zero-network import guard.
        unprompted asking for continuous or private attestation, there is
        no business here. Keep the tool free, take the reputation, move on.
 
-KT-1 status: FAIL (`docs/RESULTS-KT1-v2.md`). Prior null evaluation: `docs/RESULTS-KT1.md`.
+KT-1 status: UNEVALUATED (pending v3 write-up). Void: `docs/RESULTS-KT1-v2.md`, `docs/RESULTS-KT1.md`.
 KT-2 is FAIL (`docs/RESULTS-KT2.md`).
 KT-3 was not opened. `assay watch` is cut as a product: no tokens/sec
 delta exists on any GPU, so the 10% bar is unmet at every sampling rate.
@@ -79,7 +79,7 @@ Noise floor: `docs/SPEC-NOISEFLOOR.md` (noisefloor-v1).
 GEMM checksum detector: `docs/ABFT.md`.
 Residual definition: `docs/RESIDUAL.md` (residual-v2).
 Fault-injection detection matrix: `docs/DETECTION_MATRIX.md`.
-KT-1 evaluation: `docs/RESULTS-KT1-v2.md` (FAIL). Prior null: `docs/RESULTS-KT1.md`.
+KT-1 evaluation: pending v3 (`docs/RESULTS-KT1-v3.md`). Void: `docs/RESULTS-KT1-v2.md`, `docs/RESULTS-KT1.md`.
 KT-2 evaluation: `docs/RESULTS-KT2.md`.
 Attestation: `docs/SPEC-ATTESTATION.md` (attestation-v1).
 Survey protocol: `docs/SURVEY.md`. Publication: `docs/SURVEY-2026.md`.

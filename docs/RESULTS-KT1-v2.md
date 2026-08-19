@@ -1,6 +1,18 @@
 # RESULTS-KT1-v2
 
-**STATUS: FAIL.** This is the first valid KT-1 evaluation.
+STATUS: VOID -- INVALID RESIDUAL, NOT A KILL
+This evaluation used residual-v2, which reduced the length-M checksum
+vector to a scalar before comparison. That is not the Huang-Abraham
+elementwise formulation (`docs/RESIDUAL.md`, residual-v3).
+The "structural invisibility" of SIGN and MANTISSA_HIGH was an artifact
+of that reduction, falsified by v3 (SIGN 0/200 → 155/200 at 1 flip).
+The KT-1 bars (FPR < 1e-6 per GEMM at production shapes, >=90% exponent
+flip detection) are UNCHANGED and UNEVALUATED pending v3 write-up.
+This file is retained as evidence that the bars were not moved.
+Superseded by `docs/RESULTS-KT1-v3.md` (to be written).
+
+**STATUS: FAIL (VOID).** This was the first residual-v2 KT-1 evaluation.
+It is void. Do not cite its mechanism claims.
 
 The bars are the same numbers as `README.md` at CP-0. They were not
 moved. The detector was not retuned. No threshold was adjusted.
