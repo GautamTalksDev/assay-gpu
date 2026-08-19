@@ -439,3 +439,55 @@ observation with no predictive content.
 **RISK:** Q5 may fail at small K — a mantissa-LSB perturbation could
 clear the floor once K is small enough. If so, Q5's failure locates
 the crossover, which is a stronger result than Q5 holding.
+
+## FPR analysis — method locked 2026-08-19
+
+Problem: residual-v3 performs M=4096 independent per-row tests per GEMM.
+KT-1's bar is FPR < 1e-6 per GEMM. Under independence (measured mean
+pairwise Pearson 0.000126, see RESULTS-KT1-v3.md), this requires a
+per-row FPR of 1 - (1 - 1e-6)^(1/4096) ~= 2.44e-10.
+
+2.44e-10 cannot be estimated by direct sampling at any n we can afford.
+It must be extrapolated. The model is chosen HERE, before the tail is
+examined.
+
+METHOD (locked):
+  1. Collect n=20000 clean per-row residuals r_i at K=4096 by sampling
+     the FULL row vector (4096 rows per GEMM), not the 256-row subsample.
+     Target ~8e7 total row observations.
+  2. Fit a Generalized Pareto Distribution to exceedances above the 99th
+     percentile (peaks-over-threshold). GPD is the standard extreme-value
+     model for threshold exceedances and is chosen for that reason, not
+     because it fits these data.
+  3. Report the shape parameter xi with a confidence interval. Extrapolate
+     the 1 - 2.44e-10 quantile. That is the threshold.
+  4. Sensitivity: refit at the 95th, 99th and 99.9th percentile thresholds.
+     Report all three extrapolated thresholds. If they differ by more than
+     2x, the extrapolation is not trustworthy and must be reported as
+     such rather than averaged.
+  5. Re-run the K=4096 flip matrix at the GPD-derived threshold and
+     report detection rates against it, alongside the existing
+     observed-clean-max numbers.
+
+PREDICTIONS (locked before any tail is examined):
+
+  F1  GPD shape parameter xi is negative (bounded upper tail), in
+      [-0.5, 0]. Rationale: r_i is a ratio of bounded accumulation
+      errors, not a heavy-tailed quantity.
+  F2  the extrapolated threshold is between 1x and 5x the observed
+      clean max at K=4096 (2.684525e-06)
+  F3  the three sensitivity refits agree within 2x
+  F4  SIGN 1-flip detection at the GPD threshold falls by less than
+      10 percentage points versus the observed-clean-max threshold
+      (i.e. stays above ~67%)
+
+FALSIFIER: if xi > 0 (heavy tail) or the sensitivity refits disagree by
+more than 2x, the extrapolation is unsound. In that case report that a
+defensible per-GEMM FPR bound cannot be established from this data and
+that every detection rate in this work is conditioned on an unquantified
+false-positive rate. Do not substitute a different model to rescue it.
+
+RISK: r_i within a single GEMM may not be independent enough for the
+1 - (1-p)^(1/4096) conversion. The measured correlation is ~0, but zero
+mean pairwise correlation does not prove independence in the tail.
+Report this as a stated assumption, not a verified fact.
