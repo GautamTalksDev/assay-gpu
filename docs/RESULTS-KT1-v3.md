@@ -233,3 +233,13 @@ uv run assay characterize --sweep-v3-flips
 python scripts/analyze_v3.py data/noisefloor/pilot/sweep-v3.jsonl
 python scripts/analyze_v3_flips.py data/noisefloor/pilot/sweep-v3-flips.jsonl
 ```
+
+## KT-1 ceiling (locked before FPR fit)
+
+KT-1 verdict is independent of the FPR outcome. The GPD-extrapolated
+threshold is expected to be ≥ the observed clean max (F2 predicts 1–5×),
+and detection rate is monotone non-increasing in threshold. Therefore
+75.25% is an upper bound on detection at any defensible threshold, and
+KT-1 is FAIL against the 90% bar regardless of what the fit returns. The
+FPR analysis establishes whether the reported rates are interpretable,
+not whether the kill test passes.
