@@ -243,3 +243,9 @@ and detection rate is monotone non-increasing in threshold. Therefore
 KT-1 is FAIL against the 90% bar regardless of what the fit returns. The
 FPR analysis establishes whether the reported rates are interpretable,
 not whether the kill test passes.
+
+## KT-1 final (after FPR fit)
+
+**KT-1 FAIL.** Pooled exponent detection at `n_flips=1` at the
+GPD-extrapolated threshold `3.144535556e-06` is **304/400 = 76%**,
+below the ≥90% bar. FPR analysis and scorecard: `docs/RESULTS-FPR.md`.
