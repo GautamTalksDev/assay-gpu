@@ -208,6 +208,10 @@ Claims quoted verbatim from that section.
 | Q4 | SIGN 1-flip detection at K = 8192 is < 70% | 77% | **FAIL** |
 | Q5 | MANTISSA_LOW remains 0/100 at every K, including K = 512 | 0/1500 across all cells | **PASS** |
 
+Injection audit (`docs/RESULTS-INJECTION-AUDIT.md`): MANTISSA_LOW and
+MANTISSA_HIGH `n_flips=1` both show `n_elements_bitwise_equal = 0/50` with
+nonzero `achieved_rel_delta_max` on every sample — Q5 is not an injector miss.
+
 **Falsifier check.** The stated falsifier in `docs/RESIDUAL.md` — *"if detection
 is flat across a 16× range of K, the √K mechanism is wrong and the finding
 reduces to a single-shape observation with no predictive content"* — **FIRED**.
