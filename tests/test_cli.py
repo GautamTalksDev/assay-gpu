@@ -28,6 +28,7 @@ def test_characterize_lookup_help() -> None:
     result = runner.invoke(app, ["characterize", "--help"])
     assert result.exit_code == 0
     assert "repeats" in result.output
+    assert "--verify-injection" in result.output
 
 
 def test_characterize_lookup_without_gpu_is_inconclusive() -> None:

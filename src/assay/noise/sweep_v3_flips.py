@@ -15,7 +15,7 @@ import numpy as np
 import torch
 
 from assay.abft.residual_v3 import residual_v3
-from assay.inject import BitClass, flip_random
+from assay.inject import BitClass, InjectionVerify, flip_random
 from assay.noise.blas import available_blas_libraries, blas_library
 from assay.noise.floats import decode_f64, encode_f64
 from assay.noise.pilot import PILOT_DTYPE, PILOT_SHAPE, PILOT_WORKLOAD
@@ -182,11 +182,22 @@ def summarize_flip_ratios(
     return rows
 
 
+def _verify_fields(stats: InjectionVerify) -> dict[str, Any]:
+    """JSONL fields for --verify-injection. Additive only."""
+    return {
+        "n_elements_flipped": stats.n_elements_flipped,
+        "n_elements_bitwise_equal": stats.n_elements_bitwise_equal,
+        "achieved_rel_delta_max": encode_f64(stats.achieved_rel_delta_max),
+        "achieved_rel_delta_median": encode_f64(stats.achieved_rel_delta_median),
+    }
+
+
 def run_v3_flip_sweep(
     *,
     output_path: Path,
     device_index: int = 0,
     n_samples: int = FLIP_N,
+    verify_injection: bool = False,
 ) -> Path:
     """W02 bf16 4096³ flip matrix with residual-v3. One GEMM per sample_index."""
     if n_samples < 1:
@@ -255,12 +266,23 @@ def run_v3_flip_sweep(
                     triple = (bit_class.value, n_flips, sample_index)
                     if triple in done:
                         continue
-                    flipped, _locs = flip_random(
-                        product,
-                        n_flips,
-                        bit_class,
-                        _cell_seed(bit_class, n_flips, sample_index, workload_id),
-                    )
+                    seed = _cell_seed(bit_class, n_flips, sample_index, workload_id)
+                    if verify_injection:
+                        flipped, _locs, inj_stats = flip_random(
+                            product,
+                            n_flips,
+                            bit_class,
+                            seed,
+                            verify=True,
+                        )
+                    else:
+                        flipped, _locs = flip_random(
+                            product,
+                            n_flips,
+                            bit_class,
+                            seed,
+                        )
+                        inj_stats = None
                     v3 = residual_v3(left_gpu, right_gpu, flipped)
                     elapsed = time.perf_counter() - t0
                     r_max = v3["r_max"]
@@ -286,6 +308,8 @@ def run_v3_flip_sweep(
                         "detected": r_max > CLEAN_MAX_V3,
                         "seconds": round(elapsed, 3),
                     }
+                    if inj_stats is not None:
+                        row.update(_verify_fields(inj_stats))
                     fh.write(json.dumps(row, sort_keys=True) + "\n")
                     fh.flush()
                     done.add(triple)

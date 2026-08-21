@@ -10,7 +10,7 @@ from assay.inject.bits import (
     DTypeLayout,
     layout_for,
 )
-from assay.inject.flip import FlipLocation, flip, flip_random
+from assay.inject.flip import FlipLocation, InjectionVerify, flip, flip_random
 
 __all__ = [
     "INT8_NOTE",
@@ -21,6 +21,7 @@ __all__ = [
     "BitClass",
     "DTypeLayout",
     "FlipLocation",
+    "InjectionVerify",
     "flip",
     "flip_random",
     "layout_for",

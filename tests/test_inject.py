@@ -20,6 +20,7 @@ from assay.inject import (
     flip_random,
     layout_for,
 )
+from assay.inject.flip import InjectionVerify
 
 pytestmark = pytest.mark.cpu
 
@@ -174,6 +175,47 @@ def test_flip_random_deterministic_and_in_class() -> None:
     other, loc_c = flip_random(matrix, 3, BitClass.SIGN, SEED)
     assert {item.bit_index for item in loc_c} <= {31}
     assert not torch.equal(first, other)
+
+
+def test_flip_random_verify_off_matches_default_payload() -> None:
+    """verify=False must keep the same tensor as the pre-verify two-tuple path."""
+    matrix = torch.arange(8, dtype=torch.bfloat16).reshape(2, 4)
+    baseline, loc_a = flip_random(matrix, 2, BitClass.MANTISSA_LOW, SEED)
+    explicit, loc_b = flip_random(
+        matrix, 2, BitClass.MANTISSA_LOW, SEED, verify=False
+    )
+    assert loc_a == loc_b
+    assert torch.equal(baseline, explicit)
+    verified = flip_random(matrix, 2, BitClass.MANTISSA_LOW, SEED, verify=True)
+    assert len(verified) == 3
+    flipped, loc_c, stats = verified
+    assert loc_c == loc_a
+    assert torch.equal(flipped, baseline)
+    assert isinstance(stats, InjectionVerify)
+    assert stats.n_elements_flipped == len({loc.element_index for loc in loc_c})
+    assert stats.n_elements_bitwise_equal == 0
+    assert stats.achieved_rel_delta_max > 0.0
+
+
+def test_bf16_low_mantissa_flip_survives_cast_to_working_dtype() -> None:
+    """Observed: a bf16 MANTISSA_LOW bit flip survives the working-dtype cast.
+
+    Construct bf16 1.0 (bits 0x3F80), XOR mantissa bit 0 -> 0x3F81, then cast
+    through float32 and back to bfloat16 (the round-trip a working-dtype cast
+    can apply). The bit pattern after cast is recorded here as OBSERVED, not
+    as a hoped-for outcome.
+    """
+    one = torch.tensor([1.0], dtype=torch.bfloat16)
+    assert _pattern(one) == 0x3F80
+    flipped = flip(one, 0, 0, SEED)
+    assert _pattern(flipped) == 0x3F81
+    casted = flipped.to(torch.float32).to(torch.bfloat16)
+    survived = _pattern(casted) == 0x3F81
+    # OBSERVED: low mantissa bit 0 survives bf16 -> fp32 -> bf16.
+    assert survived is True, (
+        f"bf16 low mantissa bit did not survive cast: "
+        f"pre={_pattern(flipped):#06x} post={_pattern(casted):#06x}"
+    )
 
 
 def test_src_outside_inject_does_not_mention_assay_inject() -> None:

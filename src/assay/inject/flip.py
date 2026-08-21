@@ -22,6 +22,19 @@ class FlipLocation:
     bit_index: int
 
 
+@dataclass(frozen=True, slots=True)
+class InjectionVerify:
+    """Per-injection bit-survival audit. Emitted only when verify=True."""
+
+    n_elements_flipped: int
+    n_elements_bitwise_equal: int
+    achieved_rel_delta_max: float
+    achieved_rel_delta_median: float
+    pre_bits: tuple[int, ...]
+    post_bits: tuple[int, ...]
+    element_indices: tuple[int, ...]
+
+
 def _as_uint(tensor: torch.Tensor) -> npt.NDArray[np.unsignedinteger]:
     contiguous = tensor.detach().contiguous().cpu()
     if contiguous.dtype == torch.float32:
@@ -83,6 +96,72 @@ def _xor_one(
     flat[element_index] = np.bitwise_xor(flat[element_index], mask)
 
 
+def _uint_scalar_to_float(bit_pattern: int, dtype: torch.dtype) -> float:
+    """Interpret a raw IEEE bit pattern as a Python float (via fp32)."""
+    if dtype == torch.float32:
+        return float(np.array([np.uint32(bit_pattern)], dtype=np.uint32).view(np.float32)[0])
+    if dtype == torch.float16:
+        return float(np.array([np.uint16(bit_pattern)], dtype=np.uint16).view(np.float16)[0])
+    if dtype == torch.bfloat16:
+        as_i16 = np.array([np.int16(np.uint16(bit_pattern))], dtype=np.int16)
+        return float(torch.from_numpy(as_i16).view(torch.bfloat16).to(torch.float32).item())
+    if dtype == torch.int8:
+        return float(np.int8(np.uint8(bit_pattern)))
+    msg = f"unsupported injector dtype: {dtype}"
+    raise ValueError(msg)
+
+
+def _rel_deltas(
+    pre_bits: list[int],
+    post_bits: list[int],
+    dtype: torch.dtype,
+) -> list[float]:
+    deltas: list[float] = []
+    for old_bits, new_bits in zip(pre_bits, post_bits, strict=True):
+        old = _uint_scalar_to_float(old_bits, dtype)
+        new = _uint_scalar_to_float(new_bits, dtype)
+        if old == 0.0:
+            deltas.append(0.0)
+        else:
+            deltas.append(abs(new - old) / abs(old))
+    return deltas
+
+
+def _median(ordered: list[float]) -> float:
+    count = len(ordered)
+    if count < 1:
+        return 0.0
+    if count % 2 == 1:
+        return ordered[count // 2]
+    return 0.5 * (ordered[count // 2 - 1] + ordered[count // 2])
+
+
+def _build_injection_verify(
+    *,
+    pre_flat: npt.NDArray[np.unsignedinteger],
+    post_tensor: torch.Tensor,
+    element_indices: list[int],
+    dtype: torch.dtype,
+) -> InjectionVerify:
+    """Compare pre-flip vs post-cast bit patterns for each targeted element."""
+    unique = sorted(set(element_indices))
+    post_flat = _as_uint(post_tensor).reshape(-1)
+    pre_bits = [int(pre_flat.reshape(-1)[i]) for i in unique]
+    post_bits = [int(post_flat[i]) for i in unique]
+    n_equal = sum(1 for a, b in zip(pre_bits, post_bits, strict=True) if a == b)
+    deltas = _rel_deltas(pre_bits, post_bits, dtype)
+    ordered = sorted(deltas)
+    return InjectionVerify(
+        n_elements_flipped=len(unique),
+        n_elements_bitwise_equal=n_equal,
+        achieved_rel_delta_max=ordered[-1] if ordered else 0.0,
+        achieved_rel_delta_median=_median(ordered),
+        pre_bits=tuple(pre_bits),
+        post_bits=tuple(post_bits),
+        element_indices=tuple(unique),
+    )
+
+
 def flip(
     tensor: torch.Tensor,
     bit_index: int,
@@ -107,11 +186,20 @@ def flip_random(
     n_flips: int,
     bit_class: BitClass,
     seed: int,
-) -> tuple[torch.Tensor, list[FlipLocation]]:
+    *,
+    verify: bool = False,
+) -> (
+    tuple[torch.Tensor, list[FlipLocation]]
+    | tuple[torch.Tensor, list[FlipLocation], InjectionVerify]
+):
     """XOR `n_flips` distinct (element, bit) pairs inside `bit_class`.
 
     Same seed, tensor shape/dtype, n_flips, and class -> same locations
     and same payload, always. Sampling is without replacement.
+
+    When `verify` is True, also return InjectionVerify comparing pre-flip
+    and post-cast raw bit patterns of every perturbed element. Default off
+    keeps the return value and numerics identical to the pre-verify path.
     """
     if n_flips < 0:
         msg = "n_flips must be >= 0"
@@ -125,9 +213,20 @@ def flip_random(
         raise ValueError(msg)
     rng = make_generator(seed)
     bits = _as_uint(tensor)
+    pre_flat = bits.reshape(-1).copy() if verify else None
     locations: list[FlipLocation] = []
     if n_flips == 0:
-        return _from_uint(bits, tensor.dtype, tuple(tensor.shape), tensor.device), []
+        out = _from_uint(bits, tensor.dtype, tuple(tensor.shape), tensor.device)
+        if not verify:
+            return out, []
+        assert pre_flat is not None
+        stats = _build_injection_verify(
+            pre_flat=pre_flat,
+            post_tensor=out,
+            element_indices=[],
+            dtype=tensor.dtype,
+        )
+        return out, [], stats
     picks = rng.choice(n_slots, size=n_flips, replace=False)
     n_class = len(class_bits)
     for slot in np.atleast_1d(picks):
@@ -136,4 +235,14 @@ def flip_random(
         bit_index = class_bits[slot_i % n_class]
         _xor_one(bits, element_index, bit_index, layout.width)
         locations.append(FlipLocation(element_index, bit_index))
-    return _from_uint(bits, tensor.dtype, tuple(tensor.shape), tensor.device), locations
+    out = _from_uint(bits, tensor.dtype, tuple(tensor.shape), tensor.device)
+    if not verify:
+        return out, locations
+    assert pre_flat is not None
+    stats = _build_injection_verify(
+        pre_flat=pre_flat,
+        post_tensor=out,
+        element_indices=[loc.element_index for loc in locations],
+        dtype=tensor.dtype,
+    )
+    return out, locations, stats

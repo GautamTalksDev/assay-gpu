@@ -497,6 +497,16 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             help="Comma-separated inner K dimensions for --sweep-v3-kscale.",
         ),
     ] = None,
+    verify_injection: Annotated[
+        bool,
+        typer.Option(
+            "--verify-injection",
+            help=(
+                "With --sweep-v3-flips: record per-sample bit-survival fields "
+                "after injection. Default off keeps JSONL bit-identical."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Measure GPU vs fp64 noise floor, or look up a stored tolerance."""
     shape: tuple[int, int, int] | None
@@ -582,6 +592,7 @@ def characterize_cmd(  # noqa: PLR0913, PLR0917
             output_path=sweep_v3_flips_output,
             device_index=device,
             n_samples=repeats if repeats is not None else FLIP_N,
+            verify_injection=verify_injection,
         )
         typer.echo(f"wrote {path}")
         return
