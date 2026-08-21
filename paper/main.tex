@@ -22,7 +22,10 @@
 %   output-level (post-GEMM) algorithm-level perturbation;
 %   not fault characterization in silicon; preempt arXiv:2601.19912.
 %   Normative: docs/SPEC-PERTURBATION-MODEL.md (perturbation-v1).
-% Rest: headline numbers / KT-1 FAIL / scope --- fill later
+% Rest: headline numbers / KT-1 FAIL / scope --- fill later.
+% If citing the shared MANTISSA minimum 0.5247: it is the min ratio to
+%   the pilot clean max 3.245921e-06 (RESULTS-KT1-v3), not to
+%   threshold\_gpd or the K-scaling clean max.
 \end{abstract}
 
 \section{Introduction}
@@ -77,9 +80,16 @@
 % \input{tables/bitclass}  % TODO
 
 \subsection{MANTISSA\_LOW hard negative}
-% Slot: both threshold bases named separately
-% Support: docs/RESULTS-KSCALE.md, docs/RESULTS-FPR.md,
-%   docs/RESULTS-INJECTION-AUDIT.md
+\label{sec:results:mantissa}
+% Slot: both threshold bases named separately (0/1500 per-K maxima;
+%   0/600 at threshold\_gpd). Support: docs/RESULTS-KSCALE.md,
+%   docs/RESULTS-FPR.md, docs/RESULTS-INJECTION-AUDIT.md.
+% Ratio triple for the shared MANTISSA floor on data/sweep-v3-flips.jsonl:
+%   min / median / max = 0.5247 / 0.6217 / 0.827
+%   are ratios to the pilot clean max of 3.245921e-06
+%   (docs/RESULTS-KT1-v3.md). Same file at threshold\_gpd yields
+%   0.541631 / 0.64174 / 0.853711 (docs/RESULTS-FPR.md Table / §2.2);
+%   those are NOT ratios to the K-scaling clean max 2.684525e-06.
 % --- table: MANTISSA\_LOW two bases ---
 % \input{tables/mantissa_low}  % TODO
 
@@ -109,7 +119,11 @@
 % T4 only; W02 only; bf16 only
 % Output-level injection only; operand / accumulator / instruction
 %   out of scope (future work) --- docs/SPEC-PERTURBATION-MODEL.md
-% Shared 0.5247 MANTISSA minimum unexplained
+% Shared MANTISSA minimum 0.5247 unexplained --- ratio to the pilot
+%   clean max of 3.245921e-06 (RESULTS-KT1-v3); same observation as
+%   sec:results:mantissa. Do not quote 0.541631 here without saying
+%   threshold\_gpd.
+% Retractions: paper/CLAIMS.md claim 6 only (count lives there).
 % p95 NOT EVALUABLE (top-64 capture) --- docs/RESULTS-FPR.md
 % Extrapolation decades beyond data
 % GPD upper endpoints 1.23x vs quantiles 1.06x

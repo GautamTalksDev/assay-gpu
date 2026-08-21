@@ -111,6 +111,8 @@ unfinished characterization effort and MUST NOT be cited by this paper.**
   level are out of scope and named as future work
   → `docs/SPEC-PERTURBATION-MODEL.md`
 - Shared **0.5247** minimum across MANTISSA cells is **unexplained**
+  (ratio to the **pilot clean max** `3.245921e-06`, `docs/RESULTS-KT1-v3.md`;
+  not to `threshold_gpd` / K-scaling clean max)
   → `docs/RESULTS-KT1-v3.md`; `docs/PREDICTIONS-MANTISSA-AB.md` OUTCOME
 - **p95 NOT EVALUABLE:** mean 205.3 exceedances/GEMM vs 64-value capture;
   19500/19500 GEMMs truncated; lost exceedances systematically the smaller

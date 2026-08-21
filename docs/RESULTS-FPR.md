@@ -58,6 +58,23 @@ false-positive rate behind it. All downstream figures quote **76%**.
 (2.684525e-06 < 3.144535556e-06 < 3.245921e-06), so the extrapolated bound
 is not an artifact of either sampling run.
 
+## Flip-matrix file path
+
+All flip re-scores in this document (§2.1, §2.2, and the tables above)
+read **`data/sweep-v3-flips.jsonl`**
+(sha256 `cf1331d86ccada8e4ecdb5d59f5f0346f6c0fca390582f5552cfd1b5ad0f7d51`).
+The path `data/noisefloor/pilot/sweep-v3-flips.jsonl` is **not present** in
+the repository and was not used. Reproduce scripts that print
+`flips_path = data/sweep-v3-flips.jsonl` are authoritative for Table /
+§2.2.
+
+MANTISSA\_LOW min/median/max ratios in §2.2 (0.541631 / 0.64174 /
+0.853711) are `r_max / threshold_gpd` with
+`threshold_gpd = 3.144535556e-06`. They are **not** ratios to the
+K-scaling clean max `2.684525e-06`. The KT-1-v3 triple
+(0.5247 / 0.6217 / 0.827) is `r_max` over the **same** flip file divided
+by the pilot clean max `3.245921e-06`.
+
 ## Flip re-score provenance (§2.1 vs §2.2)
 
 Diagnosed 2026-08-21. **Neither block used a different flip file or a
