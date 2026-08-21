@@ -253,3 +253,13 @@ not whether the kill test passes.
 **KT-1 FAIL.** Pooled exponent detection at `n_flips=1` at the
 GPD-extrapolated threshold `3.144535556e-06` is **304/400 = 76%**,
 below the ≥90% bar. FPR analysis and scorecard: `docs/RESULTS-FPR.md`.
+
+## Note — §4 column header vs stored field (2026-08-21)
+
+The §4 flip-matrix table column header reads `n(ratio>1)`, but the values
+are the stored JSONL field `detected` from the bare-`>` write path
+(`r_max > CLEAN_MAX_V3` in `sweep_v3_flips.py`). EXPONENT_HIGH carries
+**1 / 1 / 12** non-finite `r_max` at `n_flips` 1 / 2 / 4 on
+`data/sweep-v3-flips.jsonl`. Labelling error; **no number in this document
+was changed.** See also `docs/RESULTS-FPR.md` § Flip re-score provenance
+and `docs/RESULTS-KSCALE.md` § Detection predicate correction.

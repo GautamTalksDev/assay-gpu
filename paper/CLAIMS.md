@@ -31,7 +31,7 @@ No prose. No new numbers.
    `threshold_gpd`.
    → `docs/RESULTS-FPR.md`
 
-6. **Three documented retractions (methodological caution).**
+6. **Four documented retractions (methodological caution).**
    - Scalar residual (residual-v2) evaluation voided; SIGN “structural
      invisibility” retracted under residual-v3.
      → `docs/RESULTS-KT1-v2.md` (void), `docs/RESULTS-KT1-v3.md`
@@ -41,6 +41,9 @@ No prose. No new numbers.
    - A-vs-B normalizer self-cancellation prediction falsified at its
      precondition when injection was found to be C-only.
      → `docs/PREDICTIONS-MANTISSA-AB.md`
+   - EXPONENT_HIGH non-monotonicity in `n_flips`, withdrawn on
+     pre-publication audit (NaN-dropping write-path predicate).
+     → `docs/RESULTS-KSCALE.md` § Detection predicate correction
 
 7. **KT-1 FAIL at 76% against a pre-registered ≥90% bar** — headline, not
    buried. Canonical: **304/400 = 76%** at `threshold_gpd` (pilot clean-max

@@ -96,12 +96,10 @@ unfinished characterization effort and MUST NOT be cited by this paper.**
 - Slot: 76% vs ≥90%
 - Support: `docs/RESULTS-FPR.md`, `docs/RESULTS-KT1-v3.md`
 
-### 4.7 Retractions (three)
-- (1) Scalar residual void
-- (2) Mantissa near-miss rejected
-- (3) A-vs-B normalizer self-cancellation falsified at precondition
-- Support: `docs/RESULTS-KT1-v2.md`, `docs/RESULTS-KT1-v3.md`,
-  `docs/RESULTS-INJECTION-AUDIT.md`, `docs/PREDICTIONS-MANTISSA-AB.md`
+### 4.7 Retractions
+- Count and list: `paper/CLAIMS.md` claim 6 only (do not restate the
+  integer here).
+- Support pointers as in that claim.
 
 ### 4.8 Falsified prediction: normalizer self-cancellation
 - Support: `docs/PREDICTIONS-MANTISSA-AB.md`

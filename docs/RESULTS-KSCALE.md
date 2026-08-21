@@ -308,3 +308,27 @@ the write-path predicate**, not an independent physical finding. Published
 cell counts above are not rewritten; the artifact is recorded here.
 Bit-class stratification (SIGN / EXPONENT / MANTISSA_HIGH / MANTISSA_LOW)
 is unaffected: non-finites occur only in EXPONENT_HIGH.
+
+## Detection predicate correction
+
+The write path in `src/assay/noise/sweep_v3_kscale.py` scores detection as
+`r_max > threshold`, which evaluates **False** on non-finite `r_max`.
+**Ten of fifteen** EXPONENT_HIGH cells contain non-finite `r_max` (up to
+**14/100** at K = 1024, `n_flips` = 4). No other bit class produces any
+non-finite `r_max`.
+
+Canonical predicate: `(not math.isfinite(r_max)) or (r_max > threshold)`.
+Corrected EXPONENT_HIGH rates (n_flips = 1 / 2 / 4) beside published
+(write-path) rates:
+
+| K | corrected (canonical) | published (bare `>`) |
+| --- | --- | --- |
+| 512 | 78 / 97 / 100 | 78 / 93 / 92 |
+| 1024 | 80 / 96 / 99 | 77 / 91 / 85 |
+| 2048 | 88 / 97 / 100 | 88 / 95 / 96 |
+| 4096 | 83 / 97 / 100 | 83 / 97 / 96 |
+| 8192 | 83 / 97 / 100 | 82 / 94 / 100 |
+
+The §3.1 table is left **unedited** and is correct for the predicate it
+used. The corrected column above is **canonical**. The reported
+EXPONENT_HIGH non-monotonicity in `n_flips` is **withdrawn**.

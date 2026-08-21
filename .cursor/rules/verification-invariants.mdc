@@ -50,3 +50,18 @@ falsify them; it may not rewrite them.
 - Do not paper over uncertainty with scores; emit explicit measured quantities and pass/fail against documented thresholds.
 - One formula, one implementation. If a residual, GPD, or checksum already exists, call it — do not re-derive a parallel copy.
 - Measurement code and interpretation/results docs land in separate commits.
+
+## Detection predicates
+
+- A non-finite residual is a detection. Any detection predicate must handle
+  non-finite explicitly; a bare comparison (`r > threshold`) is a bug.
+
+## Results data provenance
+
+- No results document may cite a data file that is not committed or recorded
+  with a sha256 and location.
+
+## Retraction count
+
+- The retraction count lives in `paper/CLAIMS.md` claim 6 only; every other
+  mention points at it rather than restating a number.
