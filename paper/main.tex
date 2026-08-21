@@ -1,0 +1,128 @@
+% ASSAY paper skeleton — CP-INJ-2 / CP-PAPER-0
+% Section stubs match paper/OUTLINE.md. No prose.
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\title{ASSAY: Detector Characterization under Output-Level Perturbation}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% Sentence 1--2: TITLE CLAIM --- fill later
+% Sentence 3 (REQUIRED): detector characterization under an
+%   output-level (post-GEMM) algorithm-level perturbation;
+%   not fault characterization in silicon; preempt arXiv:2601.19912.
+%   Normative: docs/SPEC-PERTURBATION-MODEL.md (perturbation-v1).
+% Rest: headline numbers / KT-1 FAIL / scope --- fill later
+\end{abstract}
+
+\section{Introduction}
+% Motivation: silent corruption / mercurial cores (Meta, Google)
+% Gap: ABFT detector under controlled bit-class injection
+% Contributions: map 1:1 to paper/CLAIMS.md CAN CLAIM
+% Non-claim: no silicon fault incidence; output-level only
+
+\section{Background and Related Work}
+% Ones-sided checksum / Huang--Abraham ABFT
+% Soft errors, SDC, mercurial cores
+% Fault-injection levels (algorithm / instruction / microarch);
+%   cite arXiv:2601.19912
+% TODO: remaining cites
+
+\section{Method}
+
+\subsection{Residual-v3}
+% Elementwise formulation; formula from locked docs
+
+\subsection{Perturbation model}
+% Normative: docs/SPEC-PERTURBATION-MODEL.md (perturbation-v1)
+% Output-level (post-GEMM) algorithm-level bit-class injection only
+
+\subsection{Threshold}
+% threshold\_gpd canonical (stated per-GEMM FPR)
+
+\subsection{Workload lock}
+% W02, bf16, T4, K-grid as measured
+
+\subsection{Pre-registration}
+% Predictions before measurement
+
+\section{Results}
+
+\subsection{Noise floor vs K}
+% Slot: K^{-1/2} law (-0.4999, 16x)
+% Support: docs/RESULTS-KSCALE.md
+% --- table: clean floor vs K ---
+% \input{tables/kscale_floor}  % TODO
+
+\subsection{Detectability vs K (falsifier fired)}
+% Slot: K-invariant detectability
+% Support: docs/RESULTS-KSCALE.md
+% --- table: SIGN 1-flip vs K ---
+% \input{tables/kscale_sign}  % TODO
+
+\subsection{Bit-class stratification}
+% Slot: bit position governs detectability
+% Support: docs/RESULTS-KSCALE.md
+% --- table: bit-class summary ---
+% \input{tables/bitclass}  % TODO
+
+\subsection{MANTISSA\_LOW hard negative}
+% Slot: both threshold bases named separately
+% Support: docs/RESULTS-KSCALE.md, docs/RESULTS-FPR.md,
+%   docs/RESULTS-INJECTION-AUDIT.md
+% --- table: MANTISSA\_LOW two bases ---
+% \input{tables/mantissa_low}  % TODO
+
+\subsection{FPR bound and independence check}
+% Slot: variance ratio 0.9846; GPD path
+% Support: docs/RESULTS-FPR.md
+% --- table: GPD / independence ---
+% \input{tables/fpr}  % TODO
+
+\subsection{KT-1 scorecard (headline FAIL)}
+% Slot: 76\% vs $\geq$90\%
+% Support: docs/RESULTS-FPR.md, docs/RESULTS-KT1-v3.md
+% --- table: KT-1 scorecard ---
+% \input{tables/kt1}  % TODO
+
+\subsection{Retractions}
+% (1) Scalar residual void
+% (2) Mantissa near-miss rejected
+% (3) A-vs-B normalizer self-cancellation falsified at precondition
+% Support: docs/RESULTS-KT1-v2.md, docs/RESULTS-KT1-v3.md,
+%   docs/RESULTS-INJECTION-AUDIT.md, docs/PREDICTIONS-MANTISSA-AB.md
+
+\subsection{Falsified prediction: normalizer self-cancellation}
+% Support: docs/PREDICTIONS-MANTISSA-AB.md
+
+\section{Scope}
+% T4 only; W02 only; bf16 only
+% Output-level injection only; operand / accumulator / instruction
+%   out of scope (future work) --- docs/SPEC-PERTURBATION-MODEL.md
+% Shared 0.5247 MANTISSA minimum unexplained
+% p95 NOT EVALUABLE (top-64 capture) --- docs/RESULTS-FPR.md
+% Extrapolation decades beyond data
+% GPD upper endpoints 1.23x vs quantiles 1.06x
+% Backend disagreement (PyTorch fp32 GEMV vs Triton fp64) unresolved
+%   --- docs/SPEC-NOISEFLOOR.md
+
+\section{Discussion}
+% Fill later --- map to CLAIMS only
+
+\section{Conclusion}
+% Fill later
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}
