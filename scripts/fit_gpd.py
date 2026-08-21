@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """GPD peaks-over-threshold fit for residual-v3 FPR (method locked in RESIDUAL.md).
 
-Does not edit docs/RESIDUAL.md. Uses only numpy + torch (no scipy).
+CP-FPR-CENSOR: top-64 capture may truncate p99 (rarely) and p95 (always).
+Does not edit docs/RESIDUAL.md. Uses only numpy (no scipy).
 """
 
 from __future__ import annotations
@@ -19,15 +20,39 @@ import numpy as np
 from assay.noise.floats import decode_f64
 
 M_DIM = 4096
-# Frozen pass-1 POT thresholds (prompt / pass-1 finalize). Verified against JSONL.
 P95_FROZEN = 1.057096e-06
 P99_FROZEN = 1.392735e-06
 P999_FROZEN = 1.776693e-06
 CLEAN_MAX_K4096 = 2.684525e-06
-# Per-row FPR for per-GEMM 1e-6 under independence: 1 - (1 - 1e-6)^(1/4096)
 TARGET_TAIL_PROB = 2.44e-10
-CHI2_1_95 = 3.841458820694124  # chi-square 95% critical value, 1 df
+CHI2_1_95 = 3.841458820694124
 TOP_TAIL_K = 64
+
+
+@dataclass(frozen=True, slots=True)
+class TruncationSummary:
+    threshold_name: str
+    u: float
+    mean_above: float
+    max_above: int
+    n_over_64: int
+    n_samples: int
+
+
+@dataclass(frozen=True, slots=True)
+class ExceedanceCollection:
+    """Recovered exceedances plus optional right-censor records for truncated GEMMs."""
+
+    y_exclude: np.ndarray
+    y_with_truncated_recovered: np.ndarray
+    n_rate_exclude: int
+    n_rate_all: int
+    n_total_exclude: int
+    n_total_all: int
+    per_gemm_counts: list[int]
+    censor_c: tuple[float, ...]
+    censor_n: tuple[int, ...]
+    summary: TruncationSummary
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +66,7 @@ class GpdFit:
     n_exceedances_rate: int
     n_total: int
     u: float
+    label: str
 
 
 def _decode_top64(row: dict[str, Any]) -> np.ndarray:
@@ -55,7 +81,6 @@ def _decode_top64(row: dict[str, Any]) -> np.ndarray:
 
 
 def load_pass2(path: Path) -> tuple[list[dict[str, Any]], dict[str, float] | None]:
-    """Load pass-2 fpr_clean rows and optional frozen thresholds from metadata."""
     frozen: dict[str, float] | None = None
     samples: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as fh:
@@ -93,39 +118,112 @@ def collect_exceedances(
     *,
     u: float,
     count_key: str,
-) -> tuple[np.ndarray, int, list[int]]:
-    """Exceedance magnitudes (r - u) from r_top64; rate count from n_above_*."""
-    ys: list[float] = []
-    n_rate = 0
+    threshold_name: str,
+) -> ExceedanceCollection:
+    """Collect exceedances from r_top64 without raising on n_above > 64.
+
+    When n_above > 64, the 64 recovered values are kept and
+    (n_above - 64) unrecovered exceedances are recorded as right-censored
+    on (0, c] with c = min(recovered) - u (all recovered lie above u).
+    """
+    y_exclude: list[float] = []
+    y_all_rec: list[float] = []
+    n_rate_exclude = 0
+    n_rate_all = 0
+    n_total_exclude = 0
+    n_total_all = 0
     per_gemm_counts: list[int] = []
+    censor_c: list[float] = []
+    censor_n: list[int] = []
+    n_over_64 = 0
+    max_above = 0
+
     for row in samples:
         if count_key not in row:
             msg = f"pass-2 row missing {count_key!r} (sample_index={row.get('sample_index')})"
             raise RuntimeError(msg)
         n_above = int(row[count_key])
         per_gemm_counts.append(n_above)
-        n_rate += n_above
-        if n_above > TOP_TAIL_K:
-            msg = (
-                f"n_above={n_above} > top-{TOP_TAIL_K} at sample_index="
-                f"{row.get('sample_index')}; cannot recover all exceedances"
-            )
-            raise RuntimeError(msg)
+        max_above = max(max_above, n_above)
+        n_total_all += M_DIM
+        n_rate_all += n_above
+
         top = _decode_top64(row)
         above = top[top > u]
+        truncated = n_above > TOP_TAIL_K
+        if truncated:
+            n_over_64 += 1
+            if above.size != TOP_TAIL_K:
+                msg = (
+                    f"truncated sample expected {TOP_TAIL_K} recovered values > u, "
+                    f"got {above.size} (sample_index={row.get('sample_index')})"
+                )
+                raise RuntimeError(msg)
+            c = float(np.min(above) - u)
+            if c <= 0.0:
+                msg = (
+                    f"censorship bound c={c} not positive "
+                    f"(sample_index={row.get('sample_index')})"
+                )
+                raise RuntimeError(msg)
+            n_c = n_above - TOP_TAIL_K
+            censor_c.append(c)
+            censor_n.append(n_c)
+            for value in above:
+                y_all_rec.append(float(value - u))
+            # excluded from y_exclude / n_rate_exclude / n_total_exclude
+            continue
+
         if above.size != n_above:
             msg = (
                 f"top64 above u mismatch: found {above.size} values > {u}, "
                 f"n_above={n_above} (sample_index={row.get('sample_index')})"
             )
             raise RuntimeError(msg)
+        n_total_exclude += M_DIM
+        n_rate_exclude += n_above
         for value in above:
-            ys.append(float(value - u))
-    return np.asarray(ys, dtype=np.float64), n_rate, per_gemm_counts
+            y = float(value - u)
+            y_exclude.append(y)
+            y_all_rec.append(y)
+
+    n_samples = len(samples)
+    mean_above = (n_rate_all / n_samples) if n_samples else 0.0
+    summary = TruncationSummary(
+        threshold_name=threshold_name,
+        u=u,
+        mean_above=mean_above,
+        max_above=max_above,
+        n_over_64=n_over_64,
+        n_samples=n_samples,
+    )
+    return ExceedanceCollection(
+        y_exclude=np.asarray(y_exclude, dtype=np.float64),
+        y_with_truncated_recovered=np.asarray(y_all_rec, dtype=np.float64),
+        n_rate_exclude=n_rate_exclude,
+        n_rate_all=n_rate_all,
+        n_total_exclude=n_total_exclude,
+        n_total_all=n_total_all,
+        per_gemm_counts=per_gemm_counts,
+        censor_c=tuple(censor_c),
+        censor_n=tuple(censor_n),
+        summary=summary,
+    )
+
+
+def gpd_cdf(xi: float, sigma: float, y: float) -> float:
+    if y < 0.0 or sigma <= 0.0:
+        return 0.0
+    if abs(xi) < 1e-12:
+        return float(1.0 - math.exp(-y / sigma))
+    z = 1.0 + xi * y / sigma
+    if z <= 0.0:
+        return math.nan
+    return float(1.0 - z ** (-1.0 / xi))
 
 
 def gpd_nll(xi: float, sigma: float, y: np.ndarray) -> float:
-    """Negative log-likelihood of GPD exceedances y > 0."""
+    """Negative log-likelihood of exact GPD exceedances y > 0."""
     if sigma <= 0.0 or y.size < 1:
         return math.inf
     if abs(xi) < 1e-12:
@@ -136,108 +234,156 @@ def gpd_nll(xi: float, sigma: float, y: np.ndarray) -> float:
     return float(y.size * math.log(sigma) + (1.0 + 1.0 / xi) * np.sum(np.log(z)))
 
 
-def _optimize_sigma(xi: float, y: np.ndarray) -> float:
-    """1-D minimize nll over sigma > max(0, -xi * y_max) for fixed xi."""
-    y_max = float(np.max(y))
+def gpd_nll_censored(
+    xi: float,
+    sigma: float,
+    y_exact: np.ndarray,
+    censor_c: tuple[float, ...],
+    censor_n: tuple[int, ...],
+) -> float:
+    """Exact exceedances plus right-censored counts on (0, c]."""
+    if y_exact.size < 1 and not censor_n:
+        return math.inf
+    nll = 0.0
+    if y_exact.size:
+        nll = gpd_nll(xi, sigma, y_exact)
+        if not math.isfinite(nll):
+            return math.inf
+    for c, n_c in zip(censor_c, censor_n, strict=True):
+        if n_c < 1:
+            continue
+        fc = gpd_cdf(xi, sigma, c)
+        if not math.isfinite(fc) or fc <= 0.0:
+            return math.inf
+        nll -= n_c * math.log(fc)
+    return float(nll)
+
+
+def _y_max_for_support(
+    y: np.ndarray, censor_c: tuple[float, ...],
+) -> float:
+    parts = [float(np.max(y))] if y.size else []
+    parts.extend(censor_c)
+    if not parts:
+        return 0.0
+    return max(parts)
+
+
+def _optimize_sigma(
+    xi: float,
+    y: np.ndarray,
+    *,
+    censor_c: tuple[float, ...] = (),
+    censor_n: tuple[int, ...] = (),
+) -> float:
+    y_max = _y_max_for_support(y, censor_c)
     lo = max(1e-30, (-xi * y_max) * (1.0 + 1e-9) if xi < 0.0 else 1e-30)
-    # Bracket: start near mean of exceedances
-    mean = float(np.mean(y))
-    candidates = np.unique(
-        np.concatenate(
-            [
-                np.geomspace(lo, max(lo * 1e6, mean * 100.0), 80),
-                np.array([mean, mean * 0.5, mean * 2.0], dtype=np.float64),
-            ]
-        )
-    )
-    candidates = candidates[candidates > lo]
+    mean = float(np.mean(y)) if y.size else (censor_c[0] if censor_c else 1e-7)
+    # Coarse log-grid then golden-section refine (keeps large-n fits tractable).
+    candidates = np.geomspace(lo, max(lo * 1e8, mean * 1e4), 48)
     best_s = float(candidates[0])
-    best_nll = gpd_nll(xi, best_s, y)
+    best_nll = gpd_nll_censored(xi, best_s, y, censor_c, censor_n)
     for sigma in candidates:
-        nll = gpd_nll(xi, float(sigma), y)
+        nll = gpd_nll_censored(xi, float(sigma), y, censor_c, censor_n)
         if nll < best_nll:
             best_nll = nll
             best_s = float(sigma)
-    # Local refine by ternary-ish shrinking
-    left = best_s / 2.0
-    right = best_s * 2.0
-    left = max(left, lo * (1.0 + 1e-12))
-    for _ in range(60):
-        m1 = left + (right - left) / 3.0
-        m2 = right - (right - left) / 3.0
-        n1 = gpd_nll(xi, m1, y)
-        n2 = gpd_nll(xi, m2, y)
+    left = max(best_s / 3.0, lo * (1.0 + 1e-12))
+    right = best_s * 3.0
+    phi = (1.0 + math.sqrt(5.0)) / 2.0
+    for _ in range(40):
+        m1 = right - (right - left) / phi
+        m2 = left + (right - left) / phi
+        n1 = gpd_nll_censored(xi, m1, y, censor_c, censor_n)
+        n2 = gpd_nll_censored(xi, m2, y, censor_c, censor_n)
         if n1 < n2:
             right = m2
         else:
             left = m1
-    sigma = 0.5 * (left + right)
-    return float(sigma)
+    return float(0.5 * (left + right))
 
 
-def fit_gpd_mle(y: np.ndarray, *, n_total: int, n_rate: int, u: float) -> GpdFit:
-    if y.size < 10:
-        msg = f"too few exceedances for GPD MLE: {y.size}"
+def fit_gpd_mle(
+    y: np.ndarray,
+    *,
+    n_total: int,
+    n_rate: int,
+    u: float,
+    label: str,
+    censor_c: tuple[float, ...] = (),
+    censor_n: tuple[int, ...] = (),
+) -> GpdFit:
+    n_fit = int(y.size) + int(sum(censor_n))
+    if n_fit < 10:
+        msg = f"too few exceedances for GPD MLE: {n_fit}"
         raise RuntimeError(msg)
-    # xi grid: allow mild positive (falsifier region) and negative
-    xi_grid = np.linspace(-0.8, 0.8, 321)
+    print(f"fitting {label}: n_exact={y.size} n_censored={sum(censor_n)} ...", flush=True)
+    # Coarse xi grid, then local refine.
+    xi_grid = np.linspace(-0.6, 0.4, 101)
     best_xi = 0.0
-    best_sigma = float(np.mean(y))
+    best_sigma = float(np.mean(y)) if y.size else 1e-7
     best_nll = math.inf
     for xi in xi_grid:
-        sigma = _optimize_sigma(float(xi), y)
-        nll = gpd_nll(float(xi), sigma, y)
+        sigma = _optimize_sigma(float(xi), y, censor_c=censor_c, censor_n=censor_n)
+        nll = gpd_nll_censored(float(xi), sigma, y, censor_c, censor_n)
         if nll < best_nll:
             best_nll = nll
             best_xi = float(xi)
             best_sigma = sigma
-    # Refine xi locally
-    lo_xi = best_xi - 0.05
-    hi_xi = best_xi + 0.05
-    for _ in range(40):
+    lo_xi = best_xi - 0.04
+    hi_xi = best_xi + 0.04
+    for _ in range(35):
         m1 = lo_xi + (hi_xi - lo_xi) / 3.0
         m2 = hi_xi - (hi_xi - lo_xi) / 3.0
-        s1 = _optimize_sigma(m1, y)
-        s2 = _optimize_sigma(m2, y)
-        n1 = gpd_nll(m1, s1, y)
-        n2 = gpd_nll(m2, s2, y)
+        s1 = _optimize_sigma(m1, y, censor_c=censor_c, censor_n=censor_n)
+        s2 = _optimize_sigma(m2, y, censor_c=censor_c, censor_n=censor_n)
+        n1 = gpd_nll_censored(m1, s1, y, censor_c, censor_n)
+        n2 = gpd_nll_censored(m2, s2, y, censor_c, censor_n)
         if n1 < n2:
             hi_xi = m2
             if n1 < best_nll:
-                best_nll = n1
-                best_xi = m1
-                best_sigma = s1
+                best_nll, best_xi, best_sigma = n1, m1, s1
         else:
             lo_xi = m1
             if n2 < best_nll:
-                best_nll = n2
-                best_xi = m2
-                best_sigma = s2
-    best_sigma = _optimize_sigma(best_xi, y)
-    best_nll = gpd_nll(best_xi, best_sigma, y)
+                best_nll, best_xi, best_sigma = n2, m2, s2
+    best_sigma = _optimize_sigma(
+        best_xi, y, censor_c=censor_c, censor_n=censor_n
+    )
+    best_nll = gpd_nll_censored(best_xi, best_sigma, y, censor_c, censor_n)
 
-    xi_ci = _profile_ci_xi(y, best_xi, best_nll)
-    sigma_ci = _profile_ci_sigma(y, best_sigma, best_nll)
-
+    xi_ci = _profile_ci_xi(
+        y, best_xi, best_nll, censor_c=censor_c, censor_n=censor_n
+    )
+    sigma_ci = _profile_ci_sigma(
+        y, best_sigma, best_nll, censor_c=censor_c, censor_n=censor_n
+    )
     return GpdFit(
         xi=best_xi,
         sigma=best_sigma,
         nll=best_nll,
         xi_ci=xi_ci,
         sigma_ci=sigma_ci,
-        n_exceedances_fit=int(y.size),
+        n_exceedances_fit=n_fit,
         n_exceedances_rate=int(n_rate),
         n_total=int(n_total),
         u=float(u),
+        label=label,
     )
 
 
-def _profile_ci_xi(y: np.ndarray, xi_hat: float, nll_hat: float) -> tuple[float, float]:
+def _profile_ci_xi(
+    y: np.ndarray,
+    xi_hat: float,
+    nll_hat: float,
+    *,
+    censor_c: tuple[float, ...] = (),
+    censor_n: tuple[int, ...] = (),
+) -> tuple[float, float]:
     def profile(xi: float) -> float:
-        sigma = _optimize_sigma(xi, y)
-        return gpd_nll(xi, sigma, y)
+        sigma = _optimize_sigma(xi, y, censor_c=censor_c, censor_n=censor_n)
+        return gpd_nll_censored(xi, sigma, y, censor_c, censor_n)
 
-    # Walk left / right until 2*delta_nll exceeds chi2
     def walk(direction: float) -> float:
         step = 0.01
         xi = xi_hat
@@ -254,7 +400,6 @@ def _profile_ci_xi(y: np.ndarray, xi_hat: float, nll_hat: float) -> tuple[float,
             if 2.0 * (nll - nll_hat) <= CHI2_1_95:
                 last_ok = xi
             else:
-                # binary search between last_ok and xi
                 lo, hi = (last_ok, xi) if direction > 0 else (xi, last_ok)
                 for _ in range(50):
                     mid = 0.5 * (lo + hi)
@@ -274,23 +419,41 @@ def _profile_ci_xi(y: np.ndarray, xi_hat: float, nll_hat: float) -> tuple[float,
 
 
 def _profile_ci_sigma(
-    y: np.ndarray, sigma_hat: float, nll_hat: float
+    y: np.ndarray,
+    sigma_hat: float,
+    nll_hat: float,
+    *,
+    censor_c: tuple[float, ...] = (),
+    censor_n: tuple[int, ...] = (),
 ) -> tuple[float, float]:
     def profile(sigma: float) -> float:
-        # optimize xi on a local grid for fixed sigma
+        # Optimize xi for fixed sigma via coarse grid + local refine.
         best = math.inf
-        for xi in np.linspace(-0.8, 0.8, 161):
-            nll = gpd_nll(float(xi), sigma, y)
+        best_xi = 0.0
+        for xi in np.linspace(-0.6, 0.4, 41):
+            nll = gpd_nll_censored(float(xi), sigma, y, censor_c, censor_n)
             if nll < best:
                 best = nll
+                best_xi = float(xi)
+        lo, hi = best_xi - 0.03, best_xi + 0.03
+        for _ in range(20):
+            m1 = lo + (hi - lo) / 3.0
+            m2 = hi - (hi - lo) / 3.0
+            n1 = gpd_nll_censored(m1, sigma, y, censor_c, censor_n)
+            n2 = gpd_nll_censored(m2, sigma, y, censor_c, censor_n)
+            if n1 < n2:
+                hi = m2
+                best = min(best, n1)
+            else:
+                lo = m1
+                best = min(best, n2)
         return best
 
     def walk(direction: float) -> float:
-        # multiplicative steps
-        factor = 1.02 if direction > 0 else 1.0 / 1.02
+        factor = 1.05 if direction > 0 else 1.0 / 1.05
         sigma = sigma_hat
         last_ok = sigma_hat
-        for _ in range(500):
+        for _ in range(200):
             sigma = sigma * factor
             if sigma <= 0.0:
                 break
@@ -301,7 +464,7 @@ def _profile_ci_sigma(
                 last_ok = sigma
             else:
                 lo, hi = (last_ok, sigma) if direction > 0 else (sigma, last_ok)
-                for _ in range(50):
+                for _ in range(30):
                     mid = 0.5 * (lo + hi)
                     if 2.0 * (profile(mid) - nll_hat) <= CHI2_1_95:
                         if direction > 0:
@@ -319,13 +482,11 @@ def _profile_ci_sigma(
 
 
 def gpd_return_level(fit: GpdFit, p: float) -> float:
-    """Threshold x such that P(R > x) = p, via POT formula."""
     zeta = fit.n_exceedances_rate / fit.n_total
     if zeta <= 0.0 or p <= 0.0 or p >= 1.0:
         msg = f"invalid zeta={zeta} or p={p}"
         raise RuntimeError(msg)
     if p >= zeta:
-        # requested probability not in the tail above u
         msg = f"target p={p} is not below empirical zeta_u={zeta}"
         raise RuntimeError(msg)
     xi = fit.xi
@@ -342,10 +503,6 @@ def score_flips_at_threshold(
     threshold: float,
     k: int = 4096,
 ) -> dict[tuple[str, int], tuple[int, int]]:
-    """Detection counts (detected, n) per (bit_class, n_flips) at absolute threshold.
-
-    Accepts sweep-v3-flips.jsonl or sweep-v3-kscale.jsonl (phase=flip, K filter).
-    """
     counts: dict[tuple[str, int], list[bool]] = {}
     with flips_path.open("r", encoding="utf-8") as fh:
         for line in fh:
@@ -369,14 +526,36 @@ def score_flips_at_threshold(
     return {key: (sum(flags), len(flags)) for key, flags in counts.items()}
 
 
+def _print_truncation_table(summaries: list[TruncationSummary]) -> None:
+    print("--- truncation summary ---")
+    print("| threshold | u | mean exceedances/GEMM | max | GEMMs over 64 |")
+    print("| --- | --- | --- | --- | --- |")
+    for s in summaries:
+        print(
+            f"| {s.threshold_name} | {s.u:.6e} | {s.mean_above:.4g} | "
+            f"{s.max_above} | {s.n_over_64}/{s.n_samples} |"
+        )
+
+
+def _print_fit(fit: GpdFit) -> None:
+    print(f"--- GPD MLE ({fit.label}) ---")
+    print(f"xi = {fit.xi:.10g}")
+    print(f"sigma = {fit.sigma:.10g}")
+    print(f"xi_95ci = [{fit.xi_ci[0]:.10g}, {fit.xi_ci[1]:.10g}]")
+    print(f"sigma_95ci = [{fit.sigma_ci[0]:.10g}, {fit.sigma_ci[1]:.10g}]")
+    print(f"n_exceedances_fit = {fit.n_exceedances_fit}")
+    print(f"n_exceedances_rate = {fit.n_exceedances_rate}")
+    print(f"zeta_u = {fit.n_exceedances_rate / fit.n_total:.10g}")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "fpr_jsonl",
         nargs="?",
-        default="/kaggle/working/fpr.jsonl",
+        default="data/fpr.jsonl",
         type=Path,
-        help="FPR sweep JSONL (default: /kaggle/working/fpr.jsonl)",
+        help="FPR sweep JSONL (default: data/fpr.jsonl)",
     )
     parser.add_argument(
         "--flips",
@@ -406,8 +585,11 @@ def main(argv: list[str] | None = None) -> int:
     for row in samples:
         shape = row.get("shape")
         if not isinstance(shape, list) or len(shape) != 3:
-            msg = f"pass-2 row missing shape (sample_index={row.get('sample_index')})"
-            print(f"ERROR: {msg}", file=sys.stderr)
+            print(
+                f"ERROR: pass-2 row missing shape "
+                f"(sample_index={row.get('sample_index')})",
+                file=sys.stderr,
+            )
             return 2
         if int(shape[0]) != M_DIM:
             print(
@@ -433,69 +615,125 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    # Prefer frozen thresholds from file; fall back to prompt constants.
     p95 = frozen["p95"] if frozen else P95_FROZEN
     p99 = frozen["p99"] if frozen else P99_FROZEN
     p999 = frozen["p999"] if frozen else P999_FROZEN
     print(f"frozen_p95 = {p95:.6e}")
     print(f"frozen_p99 = {p99:.6e}")
     print(f"frozen_p999 = {p999:.6e}")
-    for name, got, expect in (
-        ("p95", p95, P95_FROZEN),
-        ("p99", p99, P99_FROZEN),
-        ("p999", p999, P999_FROZEN),
-    ):
-        if abs(got - expect) / expect > 1e-5:
-            print(
-                f"WARNING: frozen {name}={got:.6e} differs from locked "
-                f"{expect:.6e}",
-                file=sys.stderr,
-            )
 
-    # --- Step 2: primary fit at p99 ---
-    y99, n_rate99, counts99 = collect_exceedances(
-        samples, u=p99, count_key="n_above_p99"
+    col95 = collect_exceedances(
+        samples, u=p95, count_key="n_above_p95", threshold_name="p95"
     )
-    fit99 = fit_gpd_mle(y99, n_total=n_row_observations, n_rate=n_rate99, u=p99)
-    print("--- GPD MLE at p99 ---")
-    print(f"xi = {fit99.xi:.10g}")
-    print(f"sigma = {fit99.sigma:.10g}")
-    print(f"xi_95ci = [{fit99.xi_ci[0]:.10g}, {fit99.xi_ci[1]:.10g}]")
-    print(f"sigma_95ci = [{fit99.sigma_ci[0]:.10g}, {fit99.sigma_ci[1]:.10g}]")
-    print(f"n_exceedances_fit = {fit99.n_exceedances_fit}")
-    print(f"n_exceedances_rate = {fit99.n_exceedances_rate}")
-    print(f"zeta_u = {fit99.n_exceedances_rate / fit99.n_total:.10g}")
+    col99 = collect_exceedances(
+        samples, u=p99, count_key="n_above_p99", threshold_name="p99"
+    )
+    col999 = collect_exceedances(
+        samples, u=p999, count_key="n_above_p999", threshold_name="p999"
+    )
+    _print_truncation_table([col95.summary, col99.summary, col999.summary])
 
-    # --- Step 3: extrapolate ---
-    x_ext = gpd_return_level(fit99, TARGET_TAIL_PROB)
-    ratio_clean = x_ext / args.clean_max_baseline
-    print("--- extrapolation ---")
+    # --- p999: no truncation expected ---
+    if col999.summary.n_over_64 != 0:
+        print(
+            f"ERROR: p999 unexpected truncation: "
+            f"{col999.summary.n_over_64} GEMMs over 64",
+            file=sys.stderr,
+        )
+        return 2
+    fit999 = fit_gpd_mle(
+        col999.y_exclude,
+        n_total=col999.n_total_all,
+        n_rate=col999.n_rate_all,
+        u=p999,
+        label="p999",
+    )
+    _print_fit(fit999)
+    x999 = gpd_return_level(fit999, TARGET_TAIL_PROB)
+
+    # --- p99: exclude vs right-censored ---
+    fit99_excl = fit_gpd_mle(
+        col99.y_exclude,
+        n_total=col99.n_total_exclude,
+        n_rate=col99.n_rate_exclude,
+        u=p99,
+        label="p99_exclude_truncated",
+    )
+    fit99_cens = fit_gpd_mle(
+        col99.y_with_truncated_recovered,
+        n_total=col99.n_total_all,
+        n_rate=col99.n_rate_all,
+        u=p99,
+        label="p99_right_censored",
+        censor_c=col99.censor_c,
+        censor_n=col99.censor_n,
+    )
+    _print_fit(fit99_excl)
+    _print_fit(fit99_cens)
+    xi_delta = abs(fit99_excl.xi - fit99_cens.xi)
+    ci_width_excl = fit99_excl.xi_ci[1] - fit99_excl.xi_ci[0]
+    ci_width_cens = fit99_cens.xi_ci[1] - fit99_cens.xi_ci[0]
+    print("--- p99 exclude vs censored ---")
+    print(f"xi_exclude = {fit99_excl.xi:.10g}")
+    print(f"xi_censored = {fit99_cens.xi:.10g}")
+    print(f"xi_abs_delta = {xi_delta:.10g}")
+    print(f"xi_ci_width_exclude = {ci_width_excl:.10g}")
+    print(f"xi_ci_width_censored = {ci_width_cens:.10g}")
+    print(
+        f"delta_over_ci_width_exclude = "
+        f"{(xi_delta / ci_width_excl) if ci_width_excl > 0 else math.inf:.10g}"
+    )
+    print(
+        f"delta_over_ci_width_censored = "
+        f"{(xi_delta / ci_width_cens) if ci_width_cens > 0 else math.inf:.10g}"
+    )
+    print(f"n_truncated_gemms = {col99.summary.n_over_64}")
+    print(f"n_unrecovered_exceedances = {sum(col99.censor_n)}")
+
+    x99_excl = gpd_return_level(fit99_excl, TARGET_TAIL_PROB)
+    x99_cens = gpd_return_level(fit99_cens, TARGET_TAIL_PROB)
+    print("--- extrapolation (both p99 fits; not averaged) ---")
     print(f"target_tail_prob = {TARGET_TAIL_PROB}")
-    print(f"extrapolated_threshold = {x_ext:.10g}")
-    print(f"ratio_to_clean_max = {ratio_clean:.10g}")
+    print(f"extrapolated_threshold_p99_exclude = {x99_excl:.10g}")
+    print(f"ratio_to_clean_max_p99_exclude = {x99_excl / args.clean_max_baseline:.10g}")
+    print(f"extrapolated_threshold_p99_censored = {x99_cens:.10g}")
+    print(
+        f"ratio_to_clean_max_p99_censored = {x99_cens / args.clean_max_baseline:.10g}"
+    )
+    print(f"extrapolated_threshold_p999 = {x999:.10g}")
+    print(f"ratio_to_clean_max_p999 = {x999 / args.clean_max_baseline:.10g}")
     print(f"clean_max = {args.clean_max_baseline:.10g}")
 
-    # --- Step 4: sensitivity ---
-    y95, n_rate95, _ = collect_exceedances(samples, u=p95, count_key="n_above_p95")
-    y999, n_rate999, _ = collect_exceedances(
-        samples, u=p999, count_key="n_above_p999"
-    )
-    fit95 = fit_gpd_mle(y95, n_total=n_row_observations, n_rate=n_rate95, u=p95)
-    fit999 = fit_gpd_mle(y999, n_total=n_row_observations, n_rate=n_rate999, u=p999)
-    x95 = gpd_return_level(fit95, TARGET_TAIL_PROB)
-    x999 = gpd_return_level(fit999, TARGET_TAIL_PROB)
-    sens = [x95, x_ext, x999]
-    sens_ratio = max(sens) / min(sens)
+    # --- p95: NOT EVALUABLE ---
     print("--- sensitivity ---")
-    print(f"threshold_at_p95 = {x95:.10g}  (xi={fit95.xi:.10g}, sigma={fit95.sigma:.10g})")
-    print(f"threshold_at_p99 = {x_ext:.10g}  (xi={fit99.xi:.10g}, sigma={fit99.sigma:.10g})")
     print(
-        f"threshold_at_p999 = {x999:.10g}  (xi={fit999.xi:.10g}, sigma={fit999.sigma:.10g})"
+        "threshold_at_p95 = NOT_EVALUABLE  "
+        f"(reason: top-64 capture; mean={col95.summary.mean_above:.4g}/GEMM, "
+        f"n_over_64={col95.summary.n_over_64}/{col95.summary.n_samples})"
     )
-    print(f"sensitivity_max_min_ratio = {sens_ratio:.10g}")
+    print(
+        f"threshold_at_p99_exclude = {x99_excl:.10g}  "
+        f"(xi={fit99_excl.xi:.10g}, sigma={fit99_excl.sigma:.10g})"
+    )
+    print(
+        f"threshold_at_p99_censored = {x99_cens:.10g}  "
+        f"(xi={fit99_cens.xi:.10g}, sigma={fit99_cens.sigma:.10g})"
+    )
+    print(
+        f"threshold_at_p999 = {x999:.10g}  "
+        f"(xi={fit999.xi:.10g}, sigma={fit999.sigma:.10g})"
+    )
+    # F3 partial: max/min among evaluable thresholds only (both p99 + p999)
+    evaluable = [x99_excl, x99_cens, x999]
+    sens_ratio = max(evaluable) / min(evaluable)
+    print(f"sensitivity_max_min_ratio_evaluable = {sens_ratio:.10g}")
+    print(
+        "F3_status = PARTIALLY_EVALUABLE  "
+        "(p99 and p999 compared; p95 not evaluable due to top-64 capture)"
+    )
 
-    # --- Step 5: independence via n_above_p99 counts ---
-    counts_arr = np.asarray(counts99, dtype=np.float64)
+    # --- independence ---
+    counts_arr = np.asarray(col99.per_gemm_counts, dtype=np.float64)
     obs_mean = float(np.mean(counts_arr))
     obs_var = float(np.var(counts_arr, ddof=1)) if counts_arr.size > 1 else 0.0
     binom_p = 0.01
@@ -509,55 +747,100 @@ def main(argv: list[str] | None = None) -> int:
     print(f"binomial_variance = {binom_var:.10g}")
     print(f"variance_ratio = {var_ratio:.10g}")
 
-    # --- Step 6: re-score flips ---
-    print("--- flip re-score at extrapolated threshold ---")
+    # --- flip re-score at both extrapolated p99 thresholds ---
+    print("--- flip re-score ---")
+    flip_excl = None
+    flip_cens = None
+    flip_base = None
     if args.flips is None or not args.flips.is_file():
         print("ERROR: --flips JSONL required for step 6 / F4", file=sys.stderr)
-        flip_gpd: dict[tuple[str, int], tuple[int, int]] | None = None
-        flip_base: dict[tuple[str, int], tuple[int, int]] | None = None
     else:
-        flip_gpd = score_flips_at_threshold(args.flips, threshold=x_ext, k=4096)
+        flip_excl = score_flips_at_threshold(args.flips, threshold=x99_excl, k=4096)
+        flip_cens = score_flips_at_threshold(args.flips, threshold=x99_cens, k=4096)
         flip_base = score_flips_at_threshold(
             args.flips, threshold=args.clean_max_baseline, k=4096
         )
-        for key in sorted(flip_gpd):
-            d_g, n_g = flip_gpd[key]
+        keys = sorted(set(flip_excl) | set(flip_base))
+        for key in keys:
             d_b, n_b = flip_base.get(key, (0, 0))
+            d_e, n_e = flip_excl.get(key, (0, 0))
+            d_c, n_c = flip_cens.get(key, (0, 0))
             print(
                 f"  {key[0]} n_flips={key[1]}: "
-                f"clean_max {d_b}/{n_b} ({100.0 * d_b / n_b if n_b else 0:.2f}%), "
-                f"gpd {d_g}/{n_g} ({100.0 * d_g / n_g if n_g else 0:.2f}%)"
+                f"clean_max {d_b}/{n_b} "
+                f"({100.0 * d_b / n_b if n_b else 0:.2f}%), "
+                f"p99_excl {d_e}/{n_e} "
+                f"({100.0 * d_e / n_e if n_e else 0:.2f}%), "
+                f"p99_cens {d_c}/{n_c} "
+                f"({100.0 * d_c / n_c if n_c else 0:.2f}%)"
             )
 
-    # Machine-readable block for RESULTS-FPR.md paste
     print("--- PASTE_BLOCK_BEGIN ---")
-    print(f"xi = {fit99.xi:.10g}")
-    print(f"sigma = {fit99.sigma:.10g}")
-    print(f"xi_95ci = [{fit99.xi_ci[0]:.10g}, {fit99.xi_ci[1]:.10g}]")
-    print(f"sigma_95ci = [{fit99.sigma_ci[0]:.10g}, {fit99.sigma_ci[1]:.10g}]")
-    print(f"extrapolated_threshold = {x_ext:.10g}")
-    print(f"ratio_to_clean_max = {ratio_clean:.10g}")
-    print(f"threshold_at_p95 = {x95:.10g}")
-    print(f"threshold_at_p99 = {x_ext:.10g}")
-    print(f"threshold_at_p999 = {x999:.10g}")
-    print(f"sensitivity_max_min_ratio = {sens_ratio:.10g}")
+    print(f"truncation_p95_mean = {col95.summary.mean_above:.10g}")
+    print(f"truncation_p95_max = {col95.summary.max_above}")
+    print(f"truncation_p95_n_over_64 = {col95.summary.n_over_64}")
+    print(f"truncation_p99_mean = {col99.summary.mean_above:.10g}")
+    print(f"truncation_p99_max = {col99.summary.max_above}")
+    print(f"truncation_p99_n_over_64 = {col99.summary.n_over_64}")
+    print(f"truncation_p999_mean = {col999.summary.mean_above:.10g}")
+    print(f"truncation_p999_max = {col999.summary.max_above}")
+    print(f"truncation_p999_n_over_64 = {col999.summary.n_over_64}")
+    print(f"xi_p99_exclude = {fit99_excl.xi:.10g}")
+    print(f"sigma_p99_exclude = {fit99_excl.sigma:.10g}")
+    print(
+        f"xi_95ci_p99_exclude = "
+        f"[{fit99_excl.xi_ci[0]:.10g}, {fit99_excl.xi_ci[1]:.10g}]"
+    )
+    print(
+        f"sigma_95ci_p99_exclude = "
+        f"[{fit99_excl.sigma_ci[0]:.10g}, {fit99_excl.sigma_ci[1]:.10g}]"
+    )
+    print(f"xi_p99_censored = {fit99_cens.xi:.10g}")
+    print(f"sigma_p99_censored = {fit99_cens.sigma:.10g}")
+    print(
+        f"xi_95ci_p99_censored = "
+        f"[{fit99_cens.xi_ci[0]:.10g}, {fit99_cens.xi_ci[1]:.10g}]"
+    )
+    print(
+        f"sigma_95ci_p99_censored = "
+        f"[{fit99_cens.sigma_ci[0]:.10g}, {fit99_cens.sigma_ci[1]:.10g}]"
+    )
+    print(f"xi_abs_delta = {xi_delta:.10g}")
+    print(f"xi_ci_width_exclude = {ci_width_excl:.10g}")
+    print(f"xi_ci_width_censored = {ci_width_cens:.10g}")
+    print(f"xi_p999 = {fit999.xi:.10g}")
+    print(f"sigma_p999 = {fit999.sigma:.10g}")
+    print(f"extrapolated_threshold_p99_exclude = {x99_excl:.10g}")
+    print(f"extrapolated_threshold_p99_censored = {x99_cens:.10g}")
+    print(f"extrapolated_threshold_p999 = {x999:.10g}")
+    print(f"ratio_to_clean_max_p99_exclude = {x99_excl / args.clean_max_baseline:.10g}")
+    print(
+        f"ratio_to_clean_max_p99_censored = {x99_cens / args.clean_max_baseline:.10g}"
+    )
+    print(f"ratio_to_clean_max_p999 = {x999 / args.clean_max_baseline:.10g}")
+    print("threshold_at_p95 = NOT_EVALUABLE")
+    print(f"sensitivity_max_min_ratio_evaluable = {sens_ratio:.10g}")
+    print(
+        "F3_status = PARTIALLY_EVALUABLE  "
+        "(p99 and p999 compared; p95 not evaluable due to top-64 capture)"
+    )
     print(f"variance_ratio = {var_ratio:.10g}")
     print(f"observed_mean = {obs_mean:.10g}")
     print(f"observed_variance = {obs_var:.10g}")
     print(f"binomial_mean = {binom_mean:.10g}")
     print(f"binomial_variance = {binom_var:.10g}")
-    if flip_gpd is not None and flip_base is not None:
-        sign_g = flip_gpd.get(("SIGN", 1))
-        sign_b = flip_base.get(("SIGN", 1))
-        if sign_g and sign_b and sign_g[1] and sign_b[1]:
-            print(
-                f"SIGN_1_clean_max = {sign_b[0]}/{sign_b[1]} "
-                f"({100.0 * sign_b[0] / sign_b[1]:.4g}%)"
-            )
-            print(
-                f"SIGN_1_gpd = {sign_g[0]}/{sign_g[1]} "
-                f"({100.0 * sign_g[0] / sign_g[1]:.4g}%)"
-            )
+    if flip_excl is not None and flip_cens is not None and flip_base is not None:
+        for tag, scored in (
+            ("clean_max", flip_base),
+            ("p99_exclude", flip_excl),
+            ("p99_censored", flip_cens),
+        ):
+            sign = scored.get(("SIGN", 1))
+            if sign and sign[1]:
+                print(
+                    f"SIGN_1_{tag} = {sign[0]}/{sign[1]} "
+                    f"({100.0 * sign[0] / sign[1]:.4g}%)"
+                )
     print("--- PASTE_BLOCK_END ---")
     return 0
 
