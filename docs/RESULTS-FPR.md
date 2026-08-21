@@ -58,6 +58,52 @@ false-positive rate behind it. All downstream figures quote **76%**.
 (2.684525e-06 < 3.144535556e-06 < 3.245921e-06), so the extrapolated bound
 is not an artifact of either sampling run.
 
+## Flip re-score provenance (§2.1 vs §2.2)
+
+Diagnosed 2026-08-21. **Neither block used a different flip file or a
+different numeric threshold.** Both re-score `data/sweep-v3-flips.jsonl`
+at `clean_max = 2.684525e-06` and at `threshold_gpd = 3.144535556e-06`.
+No re-injection. The disagreement is the **detection predicate on
+non-finite `r_max`**.
+
+| script | section | flip path | thresholds used | detection predicate |
+| --- | --- | --- | --- | --- |
+| `scripts/fit_gpd.py` (`score_flips_at_threshold`) | §2.1 | `--flips` → `data/sweep-v3-flips.jsonl` | `--clean-max-baseline` default `2.684525e-06`; extrapolated p99 exclude/censored | `r_max > threshold` only (IEEE: `nan > x` is False) |
+| `scripts/rescore_flips_gpd.py` | §2.2 | default `data/sweep-v3-flips.jsonl` | `--clean-max` default `2.684525e-06`; `--threshold-gpd` default `3.144535556e-06` | `(not isfinite(r_max)) or r_max > threshold` |
+
+Non-finite counts in `data/sweep-v3-flips.jsonl` (EXPONENT_HIGH only;
+other bit classes have zero non-finites, so they agree exactly):
+
+| cell | n | NaN | +inf |
+| --- | --- | --- | --- |
+| EXPONENT_HIGH n_flips=1 | 200 | 1 | 0 |
+| EXPONENT_HIGH n_flips=2 | 200 | 1 | 0 |
+| EXPONENT_HIGH n_flips=4 | 200 | 11 | 1 |
+
+Re-derived on that file (same thresholds; no numbers in §2.1/§2.2 tables
+were edited):
+
+| cell | §2.1 / fit predicate | §2.2 / rescore predicate |
+| --- | --- | --- |
+| EXPONENT_HIGH 1 @ clean_max | 167/200 | 168/200 |
+| EXPONENT_HIGH 1 @ threshold_gpd | 165/200 | 166/200 |
+| EXPONENT_HIGH 2 @ clean_max | 193/200 | 194/200 |
+| EXPONENT_HIGH 2 @ threshold_gpd | 192/200 | 193/200 |
+| EXPONENT_HIGH 4 @ clean_max | 189/200 | 200/200 |
+| EXPONENT_HIGH 4 @ threshold_gpd | 189/200 | 200/200 |
+| pooled exponent n_flips=1 @ threshold_gpd | 165+138 = **303/400** | 166+138 = **304/400** |
+
+The 189/200 figure also appears in `docs/RESULTS-KT1-v3.md` for
+EXPONENT_HIGH n_flips=4 at the pilot clean max, for the same reason:
+`n(ratio > 1)` treats a NaN ratio as not greater than 1.
+
+**Canonical rates remain §2.2.** A non-finite residual is a detection
+(the checksum identity failed catastrophically), not a miss. Headline
+pooled exponent at `threshold_gpd` stays **304/400 = 76%**. KT-1 is
+FAIL against ≥90% under either predicate (303/400 or 304/400). §2.1 is
+retained as printed script output; it is not a second measurement and
+not a second flip file.
+
 ## 2. Raw output
 
 ### 2.1 `scripts/fit_gpd.py`
