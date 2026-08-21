@@ -249,3 +249,62 @@ corruption, not the contraction length:
 - Algorithm-level bit-flip injection. Prior art (arXiv:2601.19912) argues this
   does not capture realistic GPU fault behaviour. This remains an open
   limitation.
+
+## Data provenance (recovered 2026-08-21)
+
+The path cited above, `data/noisefloor/pilot/sweep-v3-kscale.jsonl`, was
+missing from the repo. Three Kaggle `/kaggle/working` candidates were
+downloaded and compared. **None was named `sweep-v3-kscale.jsonl`.**
+
+| file | role | sha256 |
+| --- | --- | --- |
+| `kscale-all.jsonl` | **source of published numbers** (all five K) | `5b3da3c47d84bd47a4ed7bec21ac4cc0905e4d6dc7704f9a22118f4aebf643dd` |
+| `kscale.jsonl` | K ∈ {512, 1024, 2048} only | `8ae4b480c1b3707e4e7215ad98be2db0c3660086d345a68becb537063f9ff46b` |
+| `kscale-hi.jsonl` | K ∈ {4096, 8192} only | `97857b35f62cc5945debbaae9f90f2650ad6f4d1bb60e985c4054ec429f9bab8` |
+
+`kscale-all.jsonl` reproduces the published clean maxima and median
+`r_median` values exactly, with `git_sha` `7da9fb3…`, n = 500 clean per K,
+n = 100 per flip cell. It is now stored at the cited path
+`data/noisefloor/pilot/sweep-v3-kscale.jsonl` (same sha256). Candidates
+retained under `data/noisefloor/pilot/kscale-candidates/` with
+`kscale-SHA256SUMS.txt`.
+
+### Detection predicate and EXPONENT_HIGH non-monotonicity
+
+Published detection rates use the write-path field
+`detected = (r_max > clean_max[K])`. NaN fails that comparison.
+Non-finite `r_max` values appear **only** in EXPONENT_HIGH cells (table
+omitted here for cells with zero non-finites):
+
+| K | n_flips | nan | +inf |
+| --- | --- | --- | --- |
+| 512 | 2 | 4 | 0 |
+| 512 | 4 | 8 | 0 |
+| 1024 | 1 | 3 | 0 |
+| 1024 | 2 | 5 | 1 |
+| 1024 | 4 | 14 | 0 |
+| 2048 | 2 | 2 | 0 |
+| 2048 | 4 | 4 | 0 |
+| 4096 | 4 | 4 | 0 |
+| 8192 | 1 | 1 | 0 |
+| 8192 | 2 | 3 | 0 |
+
+EXPONENT_HIGH under both predicates (n = 100; threshold = per-K clean max):
+
+| K | n_flips | bare `>` (published) | `(not isfinite) or >` (canonical) |
+| --- | --- | --- | --- |
+| 1024 | 2 | 91/100 | 96/100 |
+| 1024 | 4 | 85/100 | 99/100 |
+| 2048 | 2 | 95/100 | 97/100 |
+| 2048 | 4 | 96/100 | 100/100 |
+| 4096 | 2 | 97/100 | 97/100 |
+| 4096 | 4 | 96/100 | 100/100 |
+
+Under the canonical predicate the published non-monotonic dips
+(91→85 at K = 1024; 97→96 at K = 4096) **do not appear** (96→99 and
+97→100). The §3.1 / scorecard observations that EXPONENT_HIGH detection
+falls with `n_flips` at those K are therefore a **NaN-dropping artifact of
+the write-path predicate**, not an independent physical finding. Published
+cell counts above are not rewritten; the artifact is recorded here.
+Bit-class stratification (SIGN / EXPONENT / MANTISSA_HIGH / MANTISSA_LOW)
+is unaffected: non-finites occur only in EXPONENT_HIGH.

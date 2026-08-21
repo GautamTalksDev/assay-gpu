@@ -77,14 +77,11 @@ unfinished characterization effort and MUST NOT be cited by this paper.**
 ### 4.3 Bit-class stratification
 - Slot for bit position governs detectability
 - Support: `docs/RESULTS-KSCALE.md`
-- ### Non-monotonicity in n_flips for EXPONENT_HIGH — UNEXPLAINED
-  - K = 1024: 91% at 2 flips, 85% at 4
-  - K = 2048: 95% at 2, 96% at 4 (weak)
-  - K = 4096: 97% at 2, 96% at 4
-  - Same effect at K = 4096, n = 200 in `docs/RESULTS-KT1-v3.md`
-    (independent run)
-  - Marked **UNEXPLAINED**. No mechanism speculation in the outline.
-    Reproducible-and-unexplained is a legitimate reported result.
+- ~~Non-monotonicity in n_flips for EXPONENT_HIGH~~ — **STRUCK**
+  (2026-08-21): NaN-dropping artifact of write-path `detected = r_max >
+  clean_max[K]`. Under canonical `(not isfinite) or r_max > thr`, rates are
+  monotone (e.g. K=1024: 96→99; K=4096: 97→100). See
+  `docs/RESULTS-KSCALE.md` § Data provenance. Do not report as unexplained.
 
 ### 4.4 MANTISSA_LOW hard negative
 - Slot: both threshold bases named separately

@@ -1,0 +1,4 @@
+5b3da3c47d84bd47a4ed7bec21ac4cc0905e4d6dc7704f9a22118f4aebf643dd  data/noisefloor/pilot/sweep-v3-kscale.jsonl
+5b3da3c47d84bd47a4ed7bec21ac4cc0905e4d6dc7704f9a22118f4aebf643dd  data/noisefloor/pilot/kscale-candidates/kscale-all.jsonl
+97857b35f62cc5945debbaae9f90f2650ad6f4d1bb60e985c4054ec429f9bab8  data/noisefloor/pilot/kscale-candidates/kscale-hi.jsonl
+8ae4b480c1b3707e4e7215ad98be2db0c3660086d345a68becb537063f9ff46b  data/noisefloor/pilot/kscale-candidates/kscale.jsonl
