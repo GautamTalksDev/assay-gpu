@@ -137,3 +137,35 @@ fact to rescue the mechanism story.
 No threshold, formula, sample size, separation, or bar in this document may
 be changed after the measurement is run. New data may falsify these
 predictions; it may not rewrite them.
+
+## OUTCOME — FALSIFIED AT PRECONDITION
+
+Recorded 2026-08-21 (CP-INJ-1). Nothing above this section was edited.
+The locked P2 separation (`rate_B - rate_A ≥ 0.05` at n = 200, `n_flips = 1`,
+`threshold_gpd`) remains exactly as written.
+
+The CP-AB2 recoverability check established that injection in this project
+is **C-only**: flips are applied to the accumulated GEMM output, not to
+operand A or operand B. Flip locations are discarded and never written to
+JSONL; there is no operand field to recover. See
+`docs/SPEC-PERTURBATION-MODEL.md` (perturbation-v1).
+
+The predicted mechanism required an A-vs-B contrast in the residual
+normalizer `|d − d'| / (|A_i||B|e)`. A flip in C perturbs the numerator
+only, unconditionally. **P1–P4 are therefore untestable with the current
+harness, not merely unmeasured.**
+
+No measurement was run, no rates were computed, and **no PASS/FAIL is
+claimed for P1–P4**. The predictions are falsified at their precondition.
+This is the fourth registered prediction in this project to be scored as
+written rather than rewritten.
+
+The shared **0.5247** minimum across MANTISSA cells
+(`docs/RESULTS-KT1-v3.md`) therefore remains **UNEXPLAINED**, and is
+carried into the paper as an open observation rather than a resolved one.
+
+Operand-level injection (flips in A or B) is legitimate future work; it is
+not a prerequisite for publishing detector characterization under the
+output-level model that was actually measured.
+
+CP-AB2 and CP-AB3 are **VOID-PRECONDITION** (`docs/CHECKPOINTS-PRE-PAPER.md`).
