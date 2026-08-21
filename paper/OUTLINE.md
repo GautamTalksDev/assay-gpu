@@ -29,6 +29,13 @@ Skeleton only. No prose in this session. Section slots for later writing.
 
 ## 3. METHOD
 
+**Normative references for the method are `docs/RESIDUAL.md` (residual-v3)
+and `docs/SPEC-PERTURBATION-MODEL.md` (perturbation-v1) ONLY.
+`docs/SPEC-NOISEFLOOR.md` is residual-v2, has zero `run-*.json` files,
+lists `measured_gpu_models: []`, has not met its three-model bar, and
+self-labels its target quantile UNJUSTIFIED. It describes a separate,
+unfinished characterization effort and MUST NOT be cited by this paper.**
+
 - Residual-v3 elementwise formulation (pointer only; formula from locked docs)
 - ### 3.x Perturbation model (normative)
   - Pointer: `docs/SPEC-PERTURBATION-MODEL.md` (perturbation-v1)
@@ -36,6 +43,16 @@ Skeleton only. No prose in this session. Section slots for later writing.
 - Threshold: `threshold_gpd` canonical (stated per-GEMM FPR)
 - Workload lock: W02, bf16, T4, K-grid as measured
 - Pre-registration discipline (predictions before measurement)
+- ### Bitwise determinism of the measurement platform
+  - 44/44 suite cases reported `all_bitwise_identical: true` on Tesla T4,
+    driver **580.159.04**, CUDA **13.0**, torch **2.13.0+cu130**.
+  - Supports that the clean floor is not contaminated by cuBLAS
+    kernel-selection variance.
+  - Scope strictly to this (GPU model, driver, CUDA, torch) tuple — does
+    not generalize; must not be stated as a general property of cuBLAS.
+  - Source: measured observation recorded in
+    `docs/SPEC-NOISEFLOOR.md`; cite the **measurement**, not that
+    document as a normative method reference (see Method note above).
 
 ## 4. RESULTS
 
@@ -46,10 +63,28 @@ Skeleton only. No prose in this session. Section slots for later writing.
 ### 4.2 Detectability vs K (falsifier fired)
 - Slot for K-invariant detectability
 - Support: `docs/RESULTS-KSCALE.md`
+- ### Threshold estimator consistency across K
+  - Detection in the K-scaling study uses the per-K **observed clean max**
+    as threshold (max `r_max` over 500 clean samples at that K).
+  - A sample maximum is not a stable statistic and grows with n. Established
+    in `docs/RESULTS-FPR.md` — that is why `threshold_gpd` exists.
+  - However **n = 500 at every K**. Same estimator, same sample size, five
+    times. The cross-K comparison is therefore internally consistent even
+    though each individual threshold is unstable in absolute terms.
+  - Stated as a **limitation-and-defense**, not as a claim that the
+    thresholds are stable.
 
 ### 4.3 Bit-class stratification
 - Slot for bit position governs detectability
 - Support: `docs/RESULTS-KSCALE.md`
+- ### Non-monotonicity in n_flips for EXPONENT_HIGH — UNEXPLAINED
+  - K = 1024: 91% at 2 flips, 85% at 4
+  - K = 2048: 95% at 2, 96% at 4 (weak)
+  - K = 4096: 97% at 2, 96% at 4
+  - Same effect at K = 4096, n = 200 in `docs/RESULTS-KT1-v3.md`
+    (independent run)
+  - Marked **UNEXPLAINED**. No mechanism speculation in the outline.
+    Reproducible-and-unexplained is a legitimate reported result.
 
 ### 4.4 MANTISSA_LOW hard negative
 - Slot: both threshold bases named separately
@@ -64,7 +99,7 @@ Skeleton only. No prose in this session. Section slots for later writing.
 - Slot: 76% vs ≥90%
 - Support: `docs/RESULTS-FPR.md`, `docs/RESULTS-KT1-v3.md`
 
-### 4.7 Retractions
+### 4.7 Retractions (three)
 - (1) Scalar residual void
 - (2) Mantissa near-miss rejected
 - (3) A-vs-B normalizer self-cancellation falsified at precondition
@@ -93,7 +128,8 @@ Skeleton only. No prose in this session. Section slots for later writing.
   vs 4.60e-06 from p999) while reported quantiles agree at **1.06×** — hard
   ceiling less well determined than the sensitivity ratio alone suggests
 - Backend disagreement (PyTorch fp32 GEMV vs Triton fp64) unresolved
-  → `docs/SPEC-NOISEFLOOR.md`
+  (recorded open issue; do not cite `docs/SPEC-NOISEFLOOR.md` as a
+  normative method reference — see §3)
 
 ## 6. DISCUSSION
 

@@ -11,3 +11,4 @@ Does not replace results documents.
 | CP-INJ-1 | DONE | Close out CP-AB1 as precondition falsification; add `docs/SPEC-PERTURBATION-MODEL.md` (perturbation-v1) |
 | CP-INJ-2 | DONE | Propagate output-level framing into `paper/` scaffold; `main.tex` skeleton |
 | CP-PAPER-0 | DONE | Skeleton + claim inventory under CP-INJ framing |
+| CP-INJ-3 | DONE | Close scaffold defects before writing |
