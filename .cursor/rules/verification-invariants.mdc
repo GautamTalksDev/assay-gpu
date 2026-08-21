@@ -7,6 +7,15 @@ alwaysApply: true
 
 A false positive tells a company its expensive hardware is broken. Prefer a missed detection over a fabricated failure. All logic must be deterministic and unit-testable.
 
+## Standing bar (every session)
+
+This is a scientific measurement tool. All logic must be deterministic and
+unit-testable. Never change a locked threshold, a locked prediction, or an
+existing numeric result to accommodate new data. Never add a second
+implementation of an existing formula. Never write an interpretation or a
+results file in the same commit as the code that produced the numbers.
+Prefer the standard library. Do not add a dependency without asking first.
+
 ## Forbidden unless the user explicitly requests it
 
 - LLM / model API calls
@@ -24,6 +33,9 @@ When a threshold is needed:
 2. Encode that provenance in a named constant, comment, or test that re-derives it from the data.
 3. If the data is not in the repo, stop and ask — do not invent a number.
 
+Locked thresholds and locked predictions in `docs/` are frozen. New data may
+falsify them; it may not rewrite them.
+
 ## Dependencies
 
 - Never add a dependency that is not already in `pyproject.toml` without asking first.
@@ -36,3 +48,5 @@ When a threshold is needed:
 - Same inputs → same outputs (no wall-clock, RNG, or network in the decision path).
 - Every decision path covered by unit tests with fixtures from real or recorded measurements.
 - Do not paper over uncertainty with scores; emit explicit measured quantities and pass/fail against documented thresholds.
+- One formula, one implementation. If a residual, GPD, or checksum already exists, call it — do not re-derive a parallel copy.
+- Measurement code and interpretation/results docs land in separate commits.

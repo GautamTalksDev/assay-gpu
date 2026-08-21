@@ -45,3 +45,5 @@ operator.json
 *.key
 *.pem
 *-key.json
+data/fpr.jsonl
+data/sweep-v3-flips.jsonl
