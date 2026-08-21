@@ -178,6 +178,10 @@ total    = 200 + 200 = 400
 TPR      = 301/400 = 75.25%
 ```
 
+This 75.25% is at the pilot observed clean max (3.245921e-06, n = 2000).
+The canonical detection figure is **76%** (304/400) at `threshold_gpd`
+(3.144535556e-06); see Threshold provenance in `docs/RESULTS-FPR.md`.
+
 ## 5. v2 vs v3 comparison (n_flips = 1)
 
 Same workload, shape, injection harness, and n = 200 per cell. v2 used

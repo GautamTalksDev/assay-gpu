@@ -206,11 +206,13 @@ Claims quoted verbatim from that section.
 | Q2 | SIGN 1-flip detection falls monotonically with K | 79%, 75%, 73%, 81%, 77% at K = 512, 1024, 2048, 4096, 8192. Non-monotonic; variation consistent with binomial noise at n = 100 (SE ~4 pp around a mean of ~77%) | **FAIL** |
 | Q3 | SIGN 1-flip detection at K = 512 is > 95% | 79% | **FAIL** |
 | Q4 | SIGN 1-flip detection at K = 8192 is < 70% | 77% | **FAIL** |
-| Q5 | MANTISSA_LOW remains 0/100 at every K, including K = 512 | 0/1500 across all cells | **PASS** |
+| Q5 | MANTISSA_LOW remains 0/100 at every K, including K = 512 | 0/1500 across all cells at per-K observed clean maxima (not at `threshold_gpd`) | **PASS** |
 
 Injection audit (`docs/RESULTS-INJECTION-AUDIT.md`): MANTISSA_LOW and
 MANTISSA_HIGH `n_flips=1` both show `n_elements_bitwise_equal = 0/50` with
 nonzero `achieved_rel_delta_max` on every sample — Q5 is not an injector miss.
+At `threshold_gpd` (K = 4096), MANTISSA_LOW is **0/600**; see
+`docs/RESULTS-FPR.md`.
 
 **Falsifier check.** The stated falsifier in `docs/RESIDUAL.md` — *"if detection
 is flat across a 16× range of K, the √K mechanism is wrong and the finding
@@ -235,7 +237,7 @@ corruption, not the contraction length:
 | SIGN | ~77% |
 | EXPONENT | 71–88% |
 | MANTISSA_HIGH | 1–7% |
-| MANTISSA_LOW | 0/1500 |
+| MANTISSA_LOW | 0/1500 at per-K observed clean maxima; 0/600 at `threshold_gpd` (K = 4096) |
 
 ## 6. Limitations
 

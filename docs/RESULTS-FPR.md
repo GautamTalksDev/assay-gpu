@@ -33,6 +33,31 @@ detection re-score: p99 exclude-truncated extrapolation
 `3.144535556e-06`. Flip re-score: `scripts/rescore_flips_gpd.py` on
 `data/sweep-v3-flips.jsonl` (no re-injection).
 
+## Threshold provenance
+
+Three thresholds appear across the results docs. Two are both labelled
+"clean max"; they are sample maxima from different runs, not a discrepancy
+in rules or fits.
+
+| value | source | pooled exponent 1-flip | reported in |
+| --- | --- | --- | --- |
+| 3.245921e-06 | observed clean max, pilot residual-v3 run, n = 2000, K = 4096 | 301/400 = 75.25% | `docs/RESULTS-KT1-v3.md` |
+| 2.684525e-06 | observed clean max, K-scaling run, n = 500 at K = 4096 | 320/400 = 80% | comparison column in this file |
+| 3.144535556e-06 | GPD-extrapolated bound at 1 − 2.44e-10 per GEMM (p99 exclude-truncated) | 304/400 = 76% | this file; canonical detection rates |
+
+The observed clean max is a **sample maximum** and therefore grows with n, so
+it is not a stable reference across runs of different sizes. The 75.25% and
+80% figures differ for that reason alone; no rule, bar, or fit was changed
+between them.
+
+`threshold_gpd = 3.144535556e-06` is hereby **canonical** for all reported
+detection rates, because it is the only threshold with a stated per-GEMM
+false-positive rate behind it. All downstream figures quote **76%**.
+
+`threshold_gpd` falls between the two observed sample maxima
+(2.684525e-06 < 3.144535556e-06 < 3.245921e-06), so the extrapolated bound
+is not an artifact of either sampling run.
+
 ## 2. Raw output
 
 ### 2.1 `scripts/fit_gpd.py`

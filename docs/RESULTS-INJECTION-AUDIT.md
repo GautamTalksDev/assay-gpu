@@ -1,13 +1,15 @@
 # RESULTS-INJECTION-AUDIT
 
 **PASS.** Injected mantissa flips survive the working-dtype cast: deltas are
-nonzero and `n_elements_bitwise_equal` is 0. The K-scale MANTISSA_LOW 0/1500
-is a hard negative, not a discarded perturbation.
+nonzero and `n_elements_bitwise_equal` is 0. MANTISSA_LOW remains a hard
+negative: 0/1500 across the K-scaling study at per-K observed clean maxima,
+and 0/600 at `threshold_gpd` (K = 4096) — not a discarded perturbation.
 
 ## Method
 
-Hypothesis under test (CP-MA): MANTISSA_LOW 0/1500 with identical ratios at
-`n_flips` ∈ {1, 2, 4} is the signature of a flip discarded by bf16 rounding
+Hypothesis under test (CP-MA): MANTISSA_LOW hard-negative counts (0/1500 at
+per-K clean maxima; 0/600 at `threshold_gpd`, K = 4096) with identical ratios
+at `n_flips` ∈ {1, 2, 4} is the signature of a flip discarded by bf16 rounding
 before the GEMM, not a real miss.
 
 Measurement: `flip_random(..., verify=True)` from CP-MA. After the XOR and the
@@ -64,5 +66,6 @@ lower mantissa bits) but strictly positive on every sample.
 
 **PASS.** MANTISSA_HIGH control shows nonzero deltas and
 `n_elements_bitwise_equal = 0`. MANTISSA_LOW shows the same pattern. The
-injected flip is not discarded by bf16 rounding in the injector. The K-scaling
-result MANTISSA_LOW 0/1500 remains a real hard negative under residual-v3.
+injected flip is not discarded by bf16 rounding in the injector. MANTISSA_LOW
+remains a real hard negative: 0/600 at `threshold_gpd` (K = 4096), and
+0/1500 across the K-scaling study scored at per-K observed clean maxima.
