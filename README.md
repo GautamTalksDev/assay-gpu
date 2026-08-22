@@ -2,7 +2,9 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22054179.svg)](https://doi.org/10.5281/zenodo.22054179)
 
-**KT-1 status: FAIL.** 75.25% pooled exponent detection at n_flips=1 (T4, bf16, 4096³) against a 90% bar; FPR half unevaluated. See `docs/RESULTS-KT1-v3.md`.
+Paper: *Calibrating the Checksum: An Empirical False-Positive Bound for One-Sided ABFT on bfloat16 GEMM, and What It Fails to Catch* -- https://doi.org/10.5281/zenodo.22054179 (source in `paper/`, snapshot at tag `v0.1.0-paper`).
+
+**KT-1 status: FAIL.** 76% pooled exponent detection at `n_flips=1` (304/400, Tesla T4, bf16, 4096³) against a pre-registered ≥90% bar, scored at the GPD-calibrated threshold `3.144536e-06`. Both halves of KT-1 are now evaluated. See `docs/RESULTS-FPR.md` and the paper.
 **KT-2: FAIL.** See `docs/RESULTS-KT2.md`.
 
 The detector was not retuned. The 10% overhead bar was not moved to 25%.
