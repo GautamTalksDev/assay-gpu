@@ -1,38 +1,149 @@
-% Required entries for CP-PAPER-0. Remaining cites: TODO.
+% Verified against primary sources 21 August 2026 unless marked TODO.
 
-@article{chai2026llm,
-  title   = {Analysis of {LLM} Vulnerability to {GPU} Soft Errors: An Instruction-Level Fault Injection Study},
-  author  = {Chai, Duo and Liu, Zizhen and Wang, Shuhuai and Pei, Songwei and Liu, Cheng and Li, Huawei and Wang, Shangguang},
-  journal = {arXiv preprint arXiv:2601.19912},
-  year    = {2026},
-  eprint  = {2601.19912},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.AR},
-  note    = {Algorithm-level vs instruction-level vs micro-architecture fault injection; algorithm-level does not capture realistic GPU behaviour}
+@article{huang1984abft,
+  title   = {Algorithm-Based Fault Tolerance for Matrix Operations},
+  author  = {Huang, Kuang-Hua and Abraham, Jacob A.},
+  journal = {IEEE Transactions on Computers},
+  volume  = {C-33},
+  number  = {6},
+  pages   = {518--528},
+  year    = {1984},
+  doi     = {10.1109/TC.1984.1676475}
+}
+
+@book{higham2002accuracy,
+  title     = {Accuracy and Stability of Numerical Algorithms},
+  author    = {Higham, Nicholas J.},
+  edition   = {2},
+  publisher = {Society for Industrial and Applied Mathematics},
+  address   = {Philadelphia, PA},
+  year      = {2002},
+  doi       = {10.1137/1.9780898718027}
 }
 
 @inproceedings{hochschild2021cores,
   title     = {Cores that Don't Count},
-  author    = {Hochschild, Peter H. and Turner, Paul and Mogul, Jeffrey C. and Govindaraju, Rama Krishna and Ranganathan, Parthasarathy and Culler, David E. and Vahdat, Amin},
-  booktitle = {Proceedings of the Workshop on Hot Topics in Operating Systems (HotOS)},
+  author    = {Hochschild, Peter H. and Turner, Paul and Mogul, Jeffrey C.
+               and Govindaraju, Rama and Ranganathan, Parthasarathy
+               and Culler, David E. and Vahdat, Amin},
+  booktitle = {Proceedings of the Workshop on Hot Topics in Operating Systems
+               (HotOS '21)},
+  pages     = {9--16},
   year      = {2021},
   publisher = {ACM},
-  doi       = {10.1145/3458336.3465297},
-  note      = {Google; mercurial cores / silent corrupt execution errors}
+  address   = {Ann Arbor, MI, USA},
+  doi       = {10.1145/3458336.3465297}
 }
 
 @misc{dixit2021silent,
   title         = {Silent Data Corruptions at Scale},
-  author        = {Dixit, Harish Dattatraya and Pendharkar, Sneha and Beadon, Matt and Mason, Chris and Chakravarthy, Tejasvi and Muthiah, Bharath and Sankar, Sriram},
+  author        = {Dixit, Harish Dattatraya and Pendharkar, Sneha and
+                   Beadon, Matt and Mason, Chris and Chakravarthy, Tejasvi and
+                   Muthiah, Bharath and Sankar, Sriram},
   year          = {2021},
   eprint        = {2102.11245},
   archivePrefix = {arXiv},
-  primaryClass  = {cs.AR},
-  note          = {Meta; fleet silent data corruption}
+  primaryClass  = {cs.AR}
 }
 
-% TODO: Huang–Abraham ABFT
-% TODO: residual / checksum detector literature
-% TODO: GPD / peaks-over-threshold references
-% TODO: bfloat16 / GPU GEMM numerical analysis
-% TODO: additional SDC / soft-error surveys as needed
+@misc{ma2025understanding,
+  title         = {Understanding Silent Data Corruption in {LLM} Training},
+  author        = {Ma, Jeffrey and Pei, Hengzhi and Lausen, Leonard and
+                   Karypis, George},
+  year          = {2025},
+  eprint        = {2502.12340},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  note          = {Appendix D evaluates checksum ABFT and reports the
+                   low-precision constraint}
+}
+
+@misc{chai2026llm,
+  title         = {Analysis of {LLM} Vulnerability to {GPU} Soft Errors:
+                   An Instruction-Level Fault Injection Study},
+  author        = {Chai, Duo and Liu, Zizhen and Wang, Shuhuai and
+                   Pei, Songwei and Liu, Cheng and Li, Huawei and
+                   Wang, Shangguang},
+  year          = {2026},
+  eprint        = {2601.19912},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AR}
+}
+
+% Verified against the PDF 21 Aug 2026: four authors, TR-15-05, eq. (2).
+@techreport{smith2015abft,
+  title       = {Towards {ABFT} for {BLIS} {GEMM}},
+  author      = {Smith, Tyler M. and van de Geijn, Robert A. and
+                 Smelyanskiy, Mikhail and Quintana-Ort{\'i}, Enrique S.},
+  institution = {The University of Texas at Austin},
+  number      = {FLAME Working Note \#76, TR-15-05},
+  year        = {2015},
+  month       = jun,
+  note        = {Revised 5 November 2015},
+  url         = {https://www.cs.utexas.edu/~flame/pubs/FLAWN76.pdf}
+}
+}
+
+@article{pickands1975statistical,
+  title   = {Statistical Inference Using Extreme Order Statistics},
+  author  = {Pickands, James},
+  journal = {The Annals of Statistics},
+  volume  = {3},
+  number  = {1},
+  pages   = {119--131},
+  year    = {1975},
+  doi     = {10.1214/aos/1176343003}
+}
+
+@book{coles2001introduction,
+  title     = {An Introduction to Statistical Modeling of Extreme Values},
+  author    = {Coles, Stuart},
+  publisher = {Springer},
+  address   = {London},
+  year      = {2001},
+  doi       = {10.1007/978-1-4471-3675-0}
+}
+
+% Read and cited: ma2025understanding (full text incl. App. D),
+% xie2025realm (full text), xue2023approxabft (abstract + ReaLM Sec II-C).
+% NOT cited because NOT read -- do not add without reading:
+%   ATTNChecker, PPoPP 2025 (Liang, Li, Ren, Li, Fang, Chen)
+%   Kosaian and Rashmi, SC '21
+%   CheckOne, arXiv:2608.04035
+%   Zhao et al. 2021, ABFT for CNNs, IEEE TPDS
+
+@inproceedings{xie2025realm,
+  title     = {{ReaLM}: Reliable and Efficient Large Language Model Inference
+               with Statistical Algorithm-Based Fault Tolerance},
+  author    = {Xie, Tong and Zhao, Jiawang and Wan, Zishen and
+               Zhang, Zuodong and Wang, Yuan and Wang, Runsheng and
+               Huang, Ru and Li, Meng},
+  booktitle = {Proceedings of the 62nd ACM/IEEE Design Automation Conference
+               (DAC)},
+  year      = {2025},
+  eprint    = {2503.24053},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AR}
+}
+
+@misc{xue2023approxabft,
+  title         = {{ApproxABFT}: Approximate Algorithm-Based Fault Tolerance
+                   for Vision Transformers},
+  author        = {Xue, Xinghua and Liu, Cheng and Huang, Haitong and
+                   Wang, Ying and Yang, Bingru and Luo, Tao and
+                   Zhang, Lei and Li, Huawei and Li, Xiaowei},
+  year          = {2023},
+  eprint        = {2302.10469},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG}
+}
+
+@book{golub2013matrix,
+  title     = {Matrix Computations},
+  author    = {Golub, Gene H. and Van Loan, Charles F.},
+  edition   = {4},
+  publisher = {The Johns Hopkins University Press},
+  address   = {Baltimore, MD},
+  year      = {2013},
+  note      = {Eq. 2.7.11, dot-product rounding bound}
+}

@@ -47,3 +47,9 @@ operator.json
 *-key.json
 data/fpr.jsonl
 data/sweep-v3-flips.jsonl
+paper/writing-pack-*/
+paper/writing-pack-*.tar.gz
+paper/main.aux
+paper/main.log
+paper/main.out
+paper/main.blg

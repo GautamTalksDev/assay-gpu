@@ -1,0 +1,120 @@
+% ============================================================
+% Section 2: Background and Related Work
+% Every work characterized here has been read. Sources:
+%   ma2025understanding  - full text incl. Appendix D
+%   xie2025realm         - full text
+%   xue2023approxabft    - abstract + description in xie2025realm Sec II-C
+%   huang1984abft, higham2002accuracy - standard references
+% ============================================================
+
+\section{Background and Related Work}
+\label{sec:related}
+
+\subsection{Silent data corruption}
+
+Silent data corruption is computation that completes and is wrong. Google
+traced silent corrupt execution errors to manufacturing defects in CPU cores
+and reported that the detected incidence is higher than software engineers
+expect \citep{hochschild2021cores}; Meta reported corruption at fleet scale
+\citep{dixit2021silent}. Error-correcting codes protect memory and do not
+address corruption arising inside the datapath, which is what makes detection
+during computation necessary at all.
+
+\subsection{Checksum ABFT}
+
+\citet{huang1984abft} introduced algorithm-based fault tolerance for matrix
+operations: augment a product with checksums and verify an invariant that holds
+in exact arithmetic. In the classical two-sided form, $W$ and $X$ are augmented
+with a checksum row $e^{\top}W$ and column $Xe$. Lighter one-sided variants
+compute only $e^{\top}WX$ or $WXe$, and the matrix sum deviation
+$e^{\top}WXe$ reduces the check to a single scalar
+\citep[surveyed in][Sec.~II-C]{xie2025realm}. The detector studied here is the
+one-sided form, compared per row rather than reduced to a scalar.
+
+Whatever the form, the detector needs a tolerance, because finite-precision
+rounding makes the two paths disagree even when the hardware is correct. How
+that tolerance is chosen is where the literature divides, and it is the axis
+this paper sits on.
+
+\subsection{Thresholds from numerical bounds, and where they stop working}
+\label{sec:related:bounds}
+
+The first approach derives the tolerance from floating-point error analysis.
+\citet{smith2015abft} give the formulation used as a detection rule in
+subsequent work: report corruption when
+$\lVert Cw - A(Bw) \rVert_\infty > \tau \lVert A \rVert_\infty
+\lVert B \rVert_\infty$ with $\tau = Ku$ and $u$ the unit roundoff. The bound
+behind $\tau$ requires $Ku \leq 0.01$ \citep[Eq.~2.7.11]{golub2013matrix}.
+
+\citet{ma2025understanding} state the consequence explicitly. For an embedding
+dimension of $4096$: at float32, $Ku \approx 0.0005$ and the condition holds; at
+float16, $Ku \approx 4$; at bfloat16, $Ku \approx 32$. Past float32 the
+condition fails, and the threshold is not conservative but undefined. They ran
+their ABFT evaluation at float32 for this reason, report that running the same
+check at bfloat16 produced false positives on nodes that had passed production
+margin tests, and name extending ABFT to low-precision datatypes as open work.
+
+That is the regime this paper occupies: the same contraction length of $4096$,
+at bfloat16, where $Ku \approx 32$ and no principled threshold is available.
+
+\subsection{Thresholds from model resilience}
+\label{sec:related:resilience}
+
+The second approach abandons the numerical bound and tunes the tolerance
+against how much error the model tolerates before its task performance
+degrades. \citet{xue2023approxabft} relax the strict comparison so that
+recovery is invoked only when computing errors are large enough to matter,
+reporting reduced computing overhead and improved accuracy against a strict
+ABFT baseline. \citet{xie2025realm} extend this with a statistical criterion
+for LLM inference, characterizing resilience across network components and
+separating error magnitude from error frequency: they observe that components
+followed by normalization are markedly more sensitive, because a single large
+error becomes an outlier that skews the mean and variance the normalization
+depends on. Their thresholds are fitted parameters, set empirically to allow a
+perplexity increase of $0.3$ and an accuracy decrease of $0.5\%$.
+
+This is calibration, but against a different quantity than ours, and the
+distinction is not incidental. Both works operate on quantized accelerator
+datapaths; \citet{xie2025realm} inject into INT32 GEMM results with INT8
+inputs. In integer arithmetic the checksum identity is exact. There is no
+rounding, no noise floor, and no false positives to trade against. Their
+thresholds exist to avoid unnecessary \emph{recovery}, not to avoid spurious
+\emph{detection}. In floating point the opposite constraint binds: the
+threshold is bounded below by the rate at which clean hardware trips it, and
+that rate has to come from somewhere.
+
+\subsection{What is missing}
+
+Neither family supplies a threshold for floating-point GEMM at a precision
+where the classical bound has gone vacuous. The numerical-bound line stops at
+float32 by its own stated condition. The model-resilience line calibrates
+against task degradation in settings where the false-positive problem does not
+arise. We are not aware of prior work that calibrates a checksum ABFT
+threshold empirically at bfloat16 against a stated per-GEMM false-positive
+rate, which is what this paper supplies, together with a measurement of what
+the resulting detector fails to catch.
+
+\subsection{Two negative results, from opposite directions}
+
+\citet{ma2025understanding} also report that checksum ABFT failed to flag
+silent corruption on fourteen of fifteen unhealthy production nodes, and
+attribute this to real perturbations being small enough relative to the matrix
+norm to fall inside floating-point error bounds. That is a negative result
+about the detector, obtained from genuinely faulty hardware, at float32.
+
+This paper reaches a compatible conclusion by a different route: controlled
+injection at bfloat16, against an empirically calibrated threshold, with the
+blind spot measured per bit class rather than inferred. The two results share
+no method, no precision, and no corruption source. They agree that the case for
+treating checksum ABFT as a complete SDC detector is weak.
+
+\subsection{Fault injection and its abstraction level}
+
+Fault injection can be performed at the algorithm level, the instruction level,
+or the micro-architectural level, and the choice bounds what the results
+support. Instruction-level studies of LLM inference on GPUs exist
+\citep{chai2026llm}. Algorithm-level injection, used here and in the resilience
+work above, does not reproduce instruction-level or micro-architectural
+effects. We treat this as a scope boundary rather than a limitation to be
+argued away; the model is specified in
+Section~\ref{sec:method:perturbation}.

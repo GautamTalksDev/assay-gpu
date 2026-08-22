@@ -1,0 +1,291 @@
+% ============================================================
+% Section 3: Method
+% Draft 1. Every number traced to a results document in the repo.
+% Normative references: docs/RESIDUAL.md (residual-v3) and
+% docs/SPEC-PERTURBATION-MODEL.md (perturbation-v1) only.
+% ============================================================
+
+\section{Method}
+\label{sec:method}
+
+This section defines four things: the residual statistic under test, the
+perturbation model under which it was exercised, the threshold against which
+detection was scored, and the discipline used to decide what counts as a
+result. The first three are ordinary experimental description. The fourth
+matters more than usual here, because most of what follows is a negative
+result, and a negative result is only worth reading if the bar it failed was
+set before the data arrived.
+
+\subsection{The residual statistic}
+\label{sec:method:residual}
+
+The detector is a ones-sided checksum in the Huang--Abraham family. Let
+$A \in \mathbb{R}^{M \times K}$ and $B \in \mathbb{R}^{K \times N}$ be the
+factors, $C$ the computed product, and $e = \mathbf{1}_N$. Two length-$M$
+vectors are formed,
+%
+\begin{equation}
+d = C e, \qquad d' = A (B e),
+\end{equation}
+%
+which agree exactly in exact arithmetic. The detector compares them per row,
+normalized by a nonnegative contraction of the factors:
+%
+\begin{equation}
+\label{eq:residual-v3}
+r_i = \frac{\lvert d_i - d'_i \rvert}{s_i},
+\qquad
+s = \lvert A \rvert \bigl( \lvert B \rvert e \bigr),
+\qquad
+r_{\max} = \max_i r_i .
+\end{equation}
+%
+Absolute values are entrywise. All of $A$, $B$ and $C$ are promoted to
+\texttt{float64} before these operations, and every accumulation in
+Equation~\ref{eq:residual-v3} is performed in \texttt{float64}. We refer to
+this statistic as \emph{residual-v3}; the specification is
+\texttt{docs/RESIDUAL.md} in the artifact.
+
+The normalizer is not incidental, and two earlier choices were discarded
+before arriving at it. Normalizing by the signed grand sum
+$\max(\lvert \mathbf{1}^{\!\top} C \mathbf{1} \rvert,
+\lvert \mathbf{1}^{\!\top} A (B\mathbf{1}) \rvert)$ produces a heavy-tailed
+quotient from two light-tailed pieces, because the denominator measures how
+completely random signs cancelled rather than how large the multiply-adds
+were. On our data that normalizer gave a max-to-median ratio of $389$, with
+Pearson correlation $0.794$ between the residual and the reciprocal of its own
+denominator. The tail was the normalizer, not the hardware.
+
+Replacing the denominator with $e^{\!\top} \lvert A \rvert \lvert B \rvert e$
+removes that failure mode. Every term is nonnegative, so cancellation cannot
+drive it toward zero, and it concentrates tightly: across $n = 2000$ draws it
+spanned $1.7169 \times 10^{10}$ to $1.7193 \times 10^{10}$, a max-to-median
+ratio of $1.0007$. It is also the quantity the componentwise theory controls.
+Writing $C = AB + E$, the checksum functional satisfies
+$\lvert \mathbf{1}^{\!\top} E \mathbf{1} \rvert \leq
+\gamma_K \, e^{\!\top} \lvert A \rvert \lvert B \rvert e$ under the classical
+bound $\lvert E \rvert \leq \gamma_K \lvert A \rvert \lvert B \rvert$
+\cite{higham2002accuracy}. We use this for its structural content only.
+At bfloat16 with $K = 4096$ the product $Ku$ exceeds unity and $\gamma_K$ is
+not a usable number, and tensor-core paths accumulate in a wider type before
+storing, so the constant in front of $\lvert A \rvert \lvert B \rvert$ is not
+the classical one either. The claim we rely on is that the checksum functional
+is bounded by a nonnegative contraction of the factors, and that contraction
+is the denominator we chose. Every numerical cutoff in this work comes from
+measurement, not from $\gamma_K$.
+
+The final change was to stop reducing before comparing. An earlier version of
+this work summed the length-$M$ checksum vector to a scalar and compared
+scalars, discarding $M-1$ degrees of freedom. Under that formulation, sign
+flips and mantissa flips were undetectable in every cell we ran, $0$ of $1800$
+samples, and we described the effect as structural. It was not structural. It
+was the reduction. Under Equation~\ref{eq:residual-v3}, single sign flips are
+caught in $155$ of $200$ samples on the same workload, the same shape, the
+same injection harness and the same seeds. That earlier finding is retracted;
+Section~\ref{sec:results:retractions} treats it and three others in full.
+
+Two properties of Equation~\ref{eq:residual-v3} are worth stating because they
+bound what the detector can be blamed for. The denominator does not depend on
+$C$, so a fault in the product cannot shrink the scale that the fault is
+measured against. And the per-row comparison is only informative if row
+residuals are not dominated by a shared error term; on the $2000 \times 256$
+matrix of per-row residuals we measure a mean pairwise Pearson correlation of
+$0.000126$ (standard deviation $0.0225$, range $-0.0853$ to $0.0980$), so the
+rows are effectively independent and the sensitivity gain over the scalar form
+is not an artifact of correlated noise.
+
+\subsection{Perturbation model}
+\label{sec:method:perturbation}
+
+Every detection number in this paper was produced under a single, versioned
+perturbation model, specified in \texttt{docs/SPEC-PERTURBATION-MODEL.md} as
+\texttt{perturbation-v1}. We state it early and plainly because it is the
+strongest constraint on how our results may be read.
+
+After $C = AB$ completes, distinct $(\text{element}, \text{bit})$ pairs inside
+$C$ are XOR-flipped. The residual is then computed from the original factors
+$A$ and $B$ and the perturbed product. Bits are drawn from one of five classes
+of the bfloat16 layout, and the number of flips per sample is $1$, $2$, or $4$:
+
+\begin{center}
+\begin{tabular}{llc}
+\toprule
+Class & Bits & Width \\
+\midrule
+\texttt{SIGN}           & $[15]$    & 1 \\
+\texttt{EXPONENT\_HIGH} & $[14{:}11]$ & 4 \\
+\texttt{EXPONENT\_LOW}  & $[10{:}7]$  & 4 \\
+\texttt{MANTISSA\_HIGH} & $[6{:}3]$   & 4 \\
+\texttt{MANTISSA\_LOW}  & $[2{:}0]$   & 3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Nothing else is perturbed. Operand $A$ is never flipped, nor is operand $B$,
+nor accumulator intermediates inside the GEMM kernel, nor instruction
+encodings, nor control flow, nor any memory outside the output tensor. This is
+an exhaustive list, and it has a direct consequence: there is no operand
+asymmetry anywhere in our data, because every recorded flip perturbs the
+numerator of Equation~\ref{eq:residual-v3} and leaves the denominator
+untouched.
+
+The obvious objection is that output-tensor XOR is not what a soft error does
+to a GPU. Chai et al.\ argue exactly this, that algorithm-level injection
+misses instruction-level and micro-architectural effects and therefore does not
+reproduce realistic fault behaviour \cite{chai2026llm}. We concede the point
+without qualification. This paper characterizes a detector under a defined
+perturbation model. It does not characterize faults in silicon, and no rate
+reported here estimates the incidence of anything in deployed hardware. The
+fleet silent-corruption literature \cite{hochschild2021cores,dixit2021silent}
+motivates why a cheap detector would be worth having; it does not supply our
+numbers, and our numbers do not speak to it.
+
+We verified that the injected perturbations are not silently discarded before
+they can be measured. Mantissa flips are the case at risk, since a
+low-mantissa flip followed by a cast could in principle round away. On
+$n = 50$ samples per class, zero targeted elements were bitwise identical after
+the cast, and zero samples had a maximum relative delta of zero. The
+\texttt{MANTISSA\_HIGH} control produced relative deltas from $0.0317$ to
+$0.492$ and \texttt{MANTISSA\_LOW} from $0.00407$ to $0.0313$: smaller, as
+expected for lower bits, but strictly positive on every sample. The
+undetectability reported in Section~\ref{sec:results:mantissa} is a real miss
+of a real perturbation.
+
+\subsection{Workload, hardware, and platform determinism}
+\label{sec:method:platform}
+
+All measurements use workload W02 in bfloat16 on a single Tesla T4 (sm75),
+with \texttt{torch} 2.13.0+cu130, CUDA 13.0, and driver 580.159.04. Factors are
+drawn as independent uniform $[-1, 1]$ matrices from a deterministic seed mixer
+over base seed, workload identifier, shape index, and sample index, with no
+wall-clock and no hashing, so every draw in this paper is reproducible from its
+index alone.
+
+Two shape regimes appear. The K-scaling study fixes $M = N = 4096$ and varies
+$K \in \{512, 1024, 2048, 4096, 8192\}$, with $n = 500$ clean samples per $K$
+and $n = 100$ flip samples per $(K, \text{class}, n_{\text{flips}})$ cell. The
+threshold and false-positive analysis fixes $M = N = K = 4096$, with $n = 2000$
+clean samples for the pilot floor, $n = 200$ flip samples per cell, and a
+separate clean sweep of $20{,}000$ GEMMs described in
+Section~\ref{sec:method:threshold}.
+
+A detector whose clean floor is contaminated by library nondeterminism cannot
+be characterized at all, so we checked. Across $44$ suite cases spanning every
+GEMM shape in fp32, bf16 and fp16, attention, reductions, transcendentals and a
+transformer block, all $44$ reported bitwise-identical output across repeated
+launches on this machine. On this hardware, cuBLAS selected a stable kernel
+every time, which supports treating the clean floor as accumulation error
+rather than kernel-selection variance. We state the scope of that observation
+precisely: it is a measured property of one tuple of GPU model, driver, CUDA
+version and framework build. It is not a general property of cuBLAS and must
+not be carried onto other hardware.
+
+\subsection{Threshold and detection predicate}
+\label{sec:method:threshold}
+
+Residual-v3 performs $M = 4096$ per-row tests per GEMM. A per-GEMM
+false-positive rate below $10^{-6}$, which is the bar this detector was built
+against, therefore requires a per-row rate of
+$1 - (1 - 10^{-6})^{1/4096} \approx 2.44 \times 10^{-10}$ under independence.
+No sampling budget we could afford estimates that directly, so it has to be
+extrapolated, and the extrapolation method was fixed in writing before the tail
+was examined.
+
+We collect clean per-row residuals from $20{,}000$ GEMMs at $K = 4096$, using
+the full 4096-row vector rather than a subsample, for roughly
+$8 \times 10^{7}$ row observations. Thresholds at the 95th, 99th and 99.9th
+percentiles are frozen from an initial pass of 500 GEMMs, giving
+$1.057096 \times 10^{-6}$, $1.392735 \times 10^{-6}$ and
+$1.776693 \times 10^{-6}$. A Generalized Pareto distribution is fitted to
+exceedances above each frozen threshold by maximum likelihood, chosen because
+it is the standard peaks-over-threshold model and not because it fits these
+data. The $1 - 2.44 \times 10^{-10}$ quantile of the fitted distribution is the
+threshold. Fitting at three separate percentiles is a pre-registered
+sensitivity check, and the pre-registered rule was that thresholds differing by
+more than a factor of two are to be reported as untrustworthy rather than
+averaged.
+
+The canonical threshold is the extrapolation from the 99th-percentile fit,
+%
+\begin{equation}
+\tau = 3.144535556 \times 10^{-6},
+\end{equation}
+%
+and every detection rate reported in this paper is scored against it unless
+explicitly stated otherwise. Section~\ref{sec:results:fpr} reports the fitted
+parameters, the sensitivity comparison, and the one threshold that turned out
+not to be evaluable.
+
+Two points of provenance need stating here rather than in a limitations
+section. First, $\tau$ is not the largest clean residual we observed. Observed
+maxima are sample maxima, they grow with $n$, and two of them appear in our own
+records for the same configuration at different sample sizes:
+$3.245921 \times 10^{-6}$ at $n = 2000$ and $2.684525 \times 10^{-6}$ at
+$n = 500$. Detection rates differ by a few points depending on which is used,
+with no change to any rule or fit. We report $\tau$ as canonical because it is
+the only threshold with a stated per-GEMM false-positive rate behind it, and we
+note that it falls between the two sample maxima, so it is not an artifact of
+either sampling run. Second, the conversion from per-GEMM to per-row rate
+assumes independence across rows. Rather than assert it, we test it: the number
+of per-row exceedances above the 99th percentile has observed mean $40.42$ and
+variance $39.93$ per GEMM, against $40.96$ and $40.55$ for
+$\mathrm{Binomial}(4096, 0.01)$, a variance ratio of $0.985$. The counts are
+very slightly under-dispersed relative to independent Bernoulli trials. This
+supports the conversion at the fitting threshold, and it does not establish
+independence deep in the tail, which we carry forward as a stated assumption.
+
+The detection predicate itself requires one sentence that would otherwise seem
+too obvious to write. A sample is detected when $r_{\max} > \tau$
+\emph{or} $r_{\max}$ is not finite. An infinite residual means the checksum
+diverged, which is the loudest signal the detector can emit, and a naive
+comparison against a threshold silently evaluates false on it. We found this in
+our own analysis code during a pre-publication audit, where it had understated
+detection in ten of fifteen \texttt{EXPONENT\_HIGH} cells by as much as
+fourteen percentage points and manufactured an apparent effect that does not
+exist. Section~\ref{sec:results:retractions} records the correction. We note
+the general form of the hazard here because it applies to any threshold
+detector operating on floating-point residuals: the case that most obviously
+indicates failure is the case that comparison operators handle worst.
+
+\subsection{Pre-registration}
+\label{sec:method:prereg}
+
+Every quantitative claim in this paper was predicted before it was measured.
+Predictions were committed to the repository, with numeric ranges and an
+explicit falsifier, before the corresponding data existed, and the commit
+history establishes the ordering independently of our word for it. Four
+prediction sets appear: the noise-floor and sensitivity predictions for
+residual-v3, the K-scaling predictions, the extreme-value method and its
+predictions, and a later mechanism prediction about operand asymmetry.
+
+The rule we imposed on ourselves is that a prediction may be falsified by new
+data but may not be rewritten by it. That rule was tested repeatedly and is the
+reason this paper is worth reading rather than the reason it is short. Of the
+K-scaling predictions, three of five failed, including the one that motivated
+the experiment. The pre-registered falsifier for the underlying mechanism
+fired. In the residual-v3 set, two of five predictions missed, one of them by
+two percentage points, and it is reported as a miss rather than rounded to a
+pass. A mechanism prediction registered late in the project was falsified at
+its precondition when we discovered the harness could not test it, and it is
+reported as such rather than deleted. The kill-test bar that this detector
+failed is the same number that appeared in the repository README before any
+code was written, and it has never been moved.
+
+We also state where pre-registration did not save us. Two defects reached
+published internal documents and were caught by audit rather than by
+prediction: the detection predicate described above, and a results document
+citing a data file under a path that never existed. Both are corrected in
+Section~\ref{sec:results:retractions}. Writing the bar down first constrains
+what you may conclude from a measurement. It does not guarantee the measurement
+is right.
+
+\subsection{Artifact availability}
+\label{sec:method:artifact}
+
+Code, measurement data, the residual and perturbation specifications, every
+pre-registration document with its commit timestamp, and the analysis scripts
+are released under Apache 2.0 at
+\url{https://github.com/GautamTalksDev/assay-gpu}. Results in this paper
+correspond to the tagged release. The pre-registration documents are of more
+use than the code: they are how a reader checks that the bars in
+Section~\ref{sec:results} predate the numbers they are compared against.
