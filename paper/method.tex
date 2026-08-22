@@ -19,7 +19,7 @@ set before the data arrived.
 \subsection{The residual statistic}
 \label{sec:method:residual}
 
-The detector is a ones-sided checksum in the Huang--Abraham family. Let
+The detector is a one-sided checksum in the Huang--Abraham family. Let
 $A \in \mathbb{R}^{M \times K}$ and $B \in \mathbb{R}^{K \times N}$ be the
 factors, $C$ the computed product, and $e = \mathbf{1}_N$. Two length-$M$
 vectors are formed,
@@ -65,7 +65,7 @@ Writing $C = AB + E$, the checksum functional satisfies
 $\lvert \mathbf{1}^{\!\top} E \mathbf{1} \rvert \leq
 \gamma_K \, e^{\!\top} \lvert A \rvert \lvert B \rvert e$ under the classical
 bound $\lvert E \rvert \leq \gamma_K \lvert A \rvert \lvert B \rvert$
-\cite{higham2002accuracy}. We use this for its structural content only.
+\citep{higham2002accuracy}. We use this for its structural content only.
 At bfloat16 with $K = 4096$ the product $Ku$ exceeds unity and $\gamma_K$ is
 not a usable number, and tensor-core paths accumulate in a wider type before
 storing, so the constant in front of $\lvert A \rvert \lvert B \rvert$ is not
@@ -130,13 +130,13 @@ numerator of Equation~\ref{eq:residual-v3} and leaves the denominator
 untouched.
 
 The obvious objection is that output-tensor XOR is not what a soft error does
-to a GPU. Chai et al.\ argue exactly this, that algorithm-level injection
-misses instruction-level and micro-architectural effects and therefore does not
-reproduce realistic fault behaviour \cite{chai2026llm}. We concede the point
+to a GPU. Instruction-level and micro-architectural effects are invisible to an
+output-tensor XOR model, and finer-grained injection studies operate below this
+abstraction \citep{chai2026llm}. We concede the point
 without qualification. This paper characterizes a detector under a defined
 perturbation model. It does not characterize faults in silicon, and no rate
 reported here estimates the incidence of anything in deployed hardware. The
-fleet silent-corruption literature \cite{hochschild2021cores,dixit2021silent}
+fleet silent-corruption literature \citep{hochschild2021cores,dixit2021silent}
 motivates why a cheap detector would be worth having; it does not supply our
 numbers, and our numbers do not speak to it.
 
@@ -250,7 +250,7 @@ indicates failure is the case that comparison operators handle worst.
 \subsection{Pre-registration}
 \label{sec:method:prereg}
 
-Every quantitative claim in this paper was predicted before it was measured.
+Every headline claim in this paper was predicted before it was measured.
 Predictions were committed to the repository, with numeric ranges and an
 explicit falsifier, before the corresponding data existed, and the commit
 history establishes the ordering independently of our word for it. Four
@@ -273,19 +273,10 @@ code was written, and it has never been moved.
 
 We also state where pre-registration did not save us. Two defects reached
 published internal documents and were caught by audit rather than by
-prediction: the detection predicate described above, and a results document
-citing a data file under a path that never existed. Both are corrected in
-Section~\ref{sec:results:retractions}. Writing the bar down first constrains
+prediction. The first is the detection predicate described above, withdrawn in
+Section~\ref{sec:results:retractions}. The second was a results document citing
+a source data file under a path that never existed; the file was located, the
+numbers it produced were reproduced from it, and the provenance was corrected
+in the repository. Writing the bar down first constrains
 what you may conclude from a measurement. It does not guarantee the measurement
 is right.
-
-\subsection{Artifact availability}
-\label{sec:method:artifact}
-
-Code, measurement data, the residual and perturbation specifications, every
-pre-registration document with its commit timestamp, and the analysis scripts
-are released under Apache 2.0 at
-\url{https://github.com/GautamTalksDev/assay-gpu}. Results in this paper
-correspond to the tagged release. The pre-registration documents are of more
-use than the code: they are how a reader checks that the bars in
-Section~\ref{sec:results} predate the numbers they are compared against.

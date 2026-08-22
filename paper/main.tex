@@ -12,7 +12,7 @@
 \hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
 
 \title{Calibrating the Checksum: An Empirical False-Positive Bound for
-Ones-Sided ABFT on bfloat16 GEMM, and What It Fails to Catch}
+One-Sided ABFT on bfloat16 GEMM, and What It Fails to Catch}
 
 \author{Gautam Khosla\\
 \texttt{https://github.com/GautamTalksDev/assay-gpu}}
@@ -36,7 +36,8 @@ characterization of faults in silicon, and no rate reported here estimates
 fault incidence in deployed hardware. We fit a Generalized Pareto distribution
 to $7.99 \times 10^{7}$ clean per-row residuals and extrapolate a threshold at
 a per-GEMM false-positive rate of $10^{-6}$, obtaining
-$3.1445 \times 10^{-6}$, or $1.17\times$ the largest clean residual observed.
+$3.1445 \times 10^{-6}$, which sits between the two clean sample maxima we
+observed and is $1.17\times$ the larger of the two runs' floor at $n = 500$.
 The independence assumption behind the per-GEMM conversion is checked
 empirically rather than asserted, at a variance ratio of $0.985$ against a
 binomial reference. Against this threshold the detector catches $304$ of $400$
@@ -251,9 +252,10 @@ which must not be merged because they rest on different thresholds:
 $0/1500$ across the K-scaling study scored at per-$K$ observed clean maxima,
 and $0/600$ at $\tau$ with $K = 4096$.
 
-At $K = 4096$ the minimum, median, and maximum ratio to threshold are
-identical to four significant figures at one, two, and four flips
-($0.5247$, $0.6217$, $0.827$). More corruption does not produce a larger
+At $K = 4096$ the minimum, median, and maximum ratio are identical to four
+significant figures at one, two, and four flips ($0.5247$, $0.6217$, $0.827$;
+these ratios are to the pilot clean maximum of $3.245921 \times 10^{-6}$, the
+basis on which they were originally recorded). More corruption does not produce a larger
 residual. A mantissa-LSB perturbation lies below the accumulation floor at this
 contraction length regardless of how many of them there are.
 
@@ -275,7 +277,7 @@ would have explained it and could not be tested.
 Table~\ref{tab:gpd} reports the fits. The shape parameter is negative at both
 evaluable thresholds with confidence intervals excluding zero, indicating a
 bounded upper tail, and the extrapolated thresholds are $1.17\times$ and
-$1.25\times$ the observed clean maximum.
+$1.24\times$ the observed clean maximum.
 
 \begin{table}[t]
 \centering
@@ -358,7 +360,7 @@ Q5 & MANTISSA\_LOW $0/100$ at every $K$ & $0/1500$ & PASS \\
 P1 & clean per-row floor median $2$--$8 \times 10^{-6}$ & $3.64 \times 10^{-7}$ & MISS \\
 P2 & clean per-row max/median $4$--$15$ & $8.92$ & PASS \\
 P3 & sign 1-flip median ratio $2$--$10$ & $2.298$ & PASS \\
-P4 & MANTISSA\_LOW 1-flip median ratio $< 1$ & $0.6217$ & PASS \\
+P4 & MANTISSA\_LOW 1-flip median ratio $< 1$ & $0.6217$$^{\dagger}$ & PASS \\
 P5 & EXPONENT\_LOW 1-flip detection $> 70\%$ & $68\%$ & MISS \\
 \midrule
 F1 & GPD $\xi$ negative, in $[-0.5, 0]$ & $-0.078$, $-0.053$ & PASS \\
@@ -368,8 +370,8 @@ F4 & sign detection falls $< 10$ pp at $\tau$ & $-3$ pp & PASS \\
 \bottomrule
 \end{tabular}
 \caption{Registered predictions and outcomes. Q and P sets were locked before
-their data existed; the F set was locked before the residual tail was
-examined.}
+their data existed; the F set was locked before the residual tail was examined.
+$^{\dagger}$ratio to the pilot clean maximum $3.245921 \times 10^{-6}$.}
 \label{tab:scorecard}
 \end{table}
 
@@ -526,7 +528,7 @@ supports.
 \section{Conclusion}
 \label{sec:conclusion}
 
-We calibrated a detection threshold for ones-sided checksum ABFT at bfloat16
+We calibrated a detection threshold for one-sided checksum ABFT at bfloat16
 and $K = 4096$, a regime where the classical threshold is undefined, and
 characterized what the detector catches and misses against it. It catches
 $76\%$ of single exponent-bit flips against a registered bar of $90\%$, and
