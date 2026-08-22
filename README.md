@@ -1,5 +1,7 @@
 # assay-gpu
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22054179.svg)](https://doi.org/10.5281/zenodo.22054179)
+
 **KT-1 status: FAIL.** 75.25% pooled exponent detection at n_flips=1 (T4, bf16, 4096³) against a 90% bar; FPR half unevaluated. See `docs/RESULTS-KT1-v3.md`.
 **KT-2: FAIL.** See `docs/RESULTS-KT2.md`.
 
