@@ -37,7 +37,7 @@ fault incidence in deployed hardware. We fit a Generalized Pareto distribution
 to $7.99 \times 10^{7}$ clean per-row residuals and extrapolate a threshold at
 a per-GEMM false-positive rate of $10^{-6}$, obtaining
 $3.1445 \times 10^{-6}$, which sits between the two clean sample maxima we
-observed and is $1.17\times$ the larger of the two runs' floor at $n = 500$.
+observed.
 The independence assumption behind the per-GEMM conversion is checked
 empirically rather than asserted, at a variance ratio of $0.985$ against a
 binomial reference. Against this threshold the detector catches $304$ of $400$
@@ -545,7 +545,7 @@ against the file that produced it.
 \section*{Artifact Availability}
 
 Code, data, specifications, and pre-registration documents are available under
-Apache 2.0 at \url{https://github.com/GautamTalksDev/assay-gpu}, at tag \texttt{v0.1.0-paper}. The dataset is released under CC BY 4.0.
+Apache 2.0 at \url{https://github.com/GautamTalksDev/assay-gpu}, at tag \texttt{v0.1.1-paper}. The dataset is released under CC BY 4.0.
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
